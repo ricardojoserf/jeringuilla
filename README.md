@@ -85,6 +85,10 @@ jeringa.exe inject-apc 1234 http://127.0.0.1/payload.bin
 
 You only set the program path. The payload can be in HEX format or a url to download it, if not the program asks for a value/url.
 
+```
+jeringa.exe earlybird PROGRAM_PATH [ HEX_PAYLOAD | URL]
+```
+
 Example - Injection using program path and payload in HEX format:
 
 ```
