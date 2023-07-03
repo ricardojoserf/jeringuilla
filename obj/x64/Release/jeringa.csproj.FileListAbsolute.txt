@@ -1,8 +1,0 @@
-D:\Escritorio\chrome-test\jeringa\jeringa\bin\x64\Release\jeringa.exe.config
-D:\Escritorio\chrome-test\jeringa\jeringa\bin\x64\Release\jeringa.exe
-D:\Escritorio\chrome-test\jeringa\jeringa\bin\x64\Release\jeringa.pdb
-D:\Escritorio\chrome-test\jeringa\jeringa\obj\x64\Release\jeringa.csproj.AssemblyReference.cache
-D:\Escritorio\chrome-test\jeringa\jeringa\obj\x64\Release\jeringa.csproj.SuggestedBindingRedirects.cache
-D:\Escritorio\chrome-test\jeringa\jeringa\obj\x64\Release\jeringa.csproj.CoreCompileInputs.cache
-D:\Escritorio\chrome-test\jeringa\jeringa\obj\x64\Release\jeringa.exe
-D:\Escritorio\chrome-test\jeringa\jeringa\obj\x64\Release\jeringa.pdb
