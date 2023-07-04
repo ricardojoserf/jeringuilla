@@ -5,6 +5,8 @@ VisualStudioVersion = 17.6.33815.320
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "jeringa", "jeringa\jeringa.csproj", "{2B8E087C-6FE5-4591-BA13-DC56621DC9DD}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "payloadEncryptor", "payloadEncryptor\payloadEncryptor.csproj", "{D48DFF07-3279-43E1-89A1-952797F6A2BA}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
