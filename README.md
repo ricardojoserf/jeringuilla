@@ -170,3 +170,11 @@ payloadEncryptor.exe raw payload.bin payload_encrypted.bin
 ![img3](https://raw.githubusercontent.com/ricardojoserf/ricardojoserf.github.io/master/images/jeringa/Screenshot_8.png)
 
 ![img3](https://raw.githubusercontent.com/ricardojoserf/ricardojoserf.github.io/master/images/jeringa/Screenshot_9.png)
+
+--------------------------------------
+
+### Function loading
+
+The program does not use the known [GetProcAddress](https://learn.microsoft.com/en-us/windows/win32/api/libloaderapi/nf-libloaderapi-getprocaddress) function. It uses [https://github.com/ricardojoserf/GetProcAddress](https://github.com/ricardojoserf/GetProcAddress), a implementation which uses only the ReadProcessMemory API call. This means the only API calls are ReadProcessMemory and GetModuleHandle.
+
+Moreover, the function names are obfuscated using AES encryption. 
