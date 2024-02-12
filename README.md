@@ -9,9 +9,7 @@ Tool for easy process injection. It implements several types of process injectio
     - Type "earlybird":  CreateProcess + VirtualAllocEx + WriteProcessMemory + ResumeThread
 
 
-The program does not use the known [GetProcAddress](https://learn.microsoft.com/en-us/windows/win32/api/libloaderapi/nf-libloaderapi-getprocaddress) and [GetModuleHandle](https://learn.microsoft.com/en-us/windows/win32/api/libloaderapi/nf-libloaderapi-getmodulehandlea) functions. It uses custom implementations for these functions: [https://github.com/ricardojoserf/GetProcAddress](https://github.com/ricardojoserf/GetProcAddress) and [https://github.com/ricardojoserf/GetModuleHandle](https://github.com/ricardojoserf/GetModuleHandle).
-
-So the only API calls used are ReadProcessMemory and NtQueryInformationProcess. Moreover, the function names are obfuscated using AES encryption. 
+The program does not use the GetProcAddress and GetModuleHandle, it uses custom implementations for these functions ([GetProcAddress](https://github.com/ricardojoserf/GetProcAddress) and [GetModuleHandle](https://github.com/ricardojoserf/GetModuleHandle)). The only API calls are NtReadVirtualMemory and NtQueryInformationProcess and the function names are obfuscated using AES encryption. 
 
 --------------------------------------
 
